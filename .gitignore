@@ -69,3 +69,6 @@ dummy.*
 # example files not to ignore
 !examples/curved_mesh_generation/Hollow_Cylinder.*
 !examples/car_crash_analysis/Car2D.msh
+
+# folders
+venv/
