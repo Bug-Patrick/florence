@@ -48,26 +48,26 @@ class CoupleStressSolver(FEMSolver):
 
             # GET BOUNDARY CONDITON FOR THE REDUCED MECHANICAL SYSTEM
             self.columns_in_mech = np.intersect1d(boundary_condition.columns_in,self.mechanical_dofs)
-            self.columns_in_mech_idx = np.in1d(self.mechanical_dofs,boundary_condition.columns_in)
+            self.columns_in_mech_idx = np.isin(self.mechanical_dofs,boundary_condition.columns_in)
 
             # GET BOUNDARY CONDITON FOR THE REDUCED ELECTROSTATIC SYSTEM
             self.columns_in_electric = np.intersect1d(boundary_condition.columns_in,self.electric_dofs)
-            self.columns_in_electric_idx = np.in1d(self.electric_dofs,boundary_condition.columns_in)
+            self.columns_in_electric_idx = np.isin(self.electric_dofs,boundary_condition.columns_in)
 
 
             # GET FREE MECHANICAL DOFs
             self.columns_out_mech = np.intersect1d(boundary_condition.columns_out,self.mechanical_dofs)
-            self.columns_out_mech_idx = np.in1d(self.mechanical_dofs,boundary_condition.columns_out)
+            self.columns_out_mech_idx = np.isin(self.mechanical_dofs,boundary_condition.columns_out)
 
             # GET FREE ELECTROSTATIC DOFs
             self.columns_out_electric = np.intersect1d(boundary_condition.columns_out,self.electric_dofs)
-            self.columns_out_electric_idx = np.in1d(self.electric_dofs,boundary_condition.columns_out)
+            self.columns_out_electric_idx = np.isin(self.electric_dofs,boundary_condition.columns_out)
 
-            self.applied_dirichlet_mech = boundary_condition.applied_dirichlet[np.in1d(boundary_condition.columns_out,self.columns_out_mech)]
-            self.applied_dirichlet_electric = boundary_condition.applied_dirichlet[np.in1d(boundary_condition.columns_out,self.columns_out_electric)]
+            self.applied_dirichlet_mech = boundary_condition.applied_dirichlet[np.isin(boundary_condition.columns_out,self.columns_out_mech)]
+            self.applied_dirichlet_electric = boundary_condition.applied_dirichlet[np.isin(boundary_condition.columns_out,self.columns_out_electric)]
 
             # MAPPED QUANTITIES
-            out_idx = np.in1d(all_dofs,boundary_condition.columns_out)
+            out_idx = np.isin(all_dofs,boundary_condition.columns_out)
             idx_electric = all_dofs[formulation.nvar-1::formulation.nvar]
             idx_mech = np.setdiff1d(all_dofs,idx_electric)
 

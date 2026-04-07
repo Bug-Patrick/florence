@@ -8210,7 +8210,7 @@ class Mesh(object):
                 lmesh.element_type = self.element_type
                 lmesh.nelem = self.nelem
                 unnodes, inv = np.unique(self.elements[:,:nodeperelem], return_inverse=True)
-                aranger = np.arange(lmesh.nelem*nodeperelem)
+                aranger = np.arange(lmesh.nelem)
                 lmesh.elements = inv[aranger].reshape(lmesh.nelem,nodeperelem)
                 lmesh.points = self.points[unnodes,:]
                 lmesh.nnode = lmesh.points.shape[0]

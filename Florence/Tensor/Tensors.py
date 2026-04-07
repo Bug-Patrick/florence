@@ -134,7 +134,7 @@ def in2d(arr1, arr2, axis=1, consider_sort=False):
 
     arr1_view = np.ascontiguousarray(arr1).view(np.dtype((np.void, arr1.dtype.itemsize * arr1.shape[1])))
     arr2_view = np.ascontiguousarray(arr2).view(np.dtype((np.void, arr2.dtype.itemsize * arr2.shape[1])))
-    intersected = np.in1d(arr1_view, arr2_view)
+    intersected = np.isin(arr1_view, arr2_view)
     return intersected.view(np.bool).reshape(-1)
 
 

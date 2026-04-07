@@ -207,7 +207,7 @@ def NodeArrangementHex(C):
         faces_z = quad_aranger+element_numbering.max()+1
         element_numbering = np.concatenate((element_numbering, faces_z))
         if i==C:
-            element_numbering = element_numbering[~np.in1d(element_numbering,faces_z[:4])]
+            element_numbering = element_numbering[~np.isin(element_numbering,faces_z[:4])]
             element_numbering = np.concatenate((element_numbering[:4],faces_z[:4],element_numbering[4:]))
     traversed_edge_numbering_hex = None
 
