@@ -8,21 +8,22 @@ FLORENCEPATH:=$(CURDIR)
 help:
 	@echo 'Usage: make [target]'
 	@echo ''
-	@echo "Prerequisite:"
+	@echo 'Prerequisite:'
 	@echo '	Run from directory of cloned repository'
 	@echo ''
 	@echo 'Targets:'
-	@echo "	apt_refresh			Update and Upgrade packages ~ Unnecessary, use with caution"
-	@echo "	before_install		Install dependencies from apt, external sources and Poya's projects"
-	@echo "	apt_dependencies	Install apt listed packages"
-	@echo "	outer_dependencies	Install Eigen"
-	@echo "	custom_dependencies	Install PostMesh and Fastor from Roman Poya"
-	@echo "	PostMesh			Install PostMesh from Roman Poya ~ via own Fork"
-	@echo "	Fastor				Install Fastor from Roman Poya"
-	@echo "	python				DOESNT WORK - COPY TO CMD SHELL - create Virtual Environment with installed packages from requirements"
-	@echo '	install				first time cython execution'
-	@echo ' run					recurring cython execution'
-	@echo '	env					Provide Florence in PythonPath, Usage: eval $$(make env)'
+	@echo '	apt_refresh		Update and Upgrade packages - Unnecessary, use with caution'
+	@echo '	before_install		Install dependencies from apt, external sources and Poyas projects'
+	@echo '	apt_dependencies	Install apt listed packages'
+	@echo '	outer_dependencies	Install Eigen'
+	@echo '	custom_dependencies	Install PostMesh and Fastor from Roman Poya'
+	@echo '	PostMesh		Install PostMesh from Roman Poya ~ via own Fork'
+	@echo '	Fastor			Install Fastor from Roman Poya'
+	@echo '	python			DOESNT WORK - COPY TO CMD SHELL - create Virtual Environment with installed packages from requirements'
+	@echo '	install			first time cython execution'
+	@echo '	check_install		first time cython execution'
+	@echo '	run			recurring cython execution'
+	@echo '	env			Provide Florence in PythonPath, Usage: eval $$(make env)'
 
 apt_refresh:
 	sudo apt update --fix-missing
@@ -57,7 +58,7 @@ PostMesh:
 # pip install PostMeshPy
 # better clone updated PostMesh fork
 	git clone git@github.com:Bug-Patrick/PostMesh.git ~/repos/PostMesh
-# provide own Makefile and Instructions
+# provide own Makefile and Instructions, Is PostMesh in Path? or how can Florence link to it?
 
 Fastor:
 	cd ~/repos
@@ -67,17 +68,27 @@ Fastor:
 python:
 # Setup python venv
 # cd $(FLORENCEPATH) doesn't work
-	python3 -m venv venvpy
+	python3 -m venv venv
 # limitation of Makefile: activate only for 1 line, as it is a process run in its own environment! -> .sh better
-	. venvpy/bin/activate
+	. venv/bin/activate
 # pypi packages - install before installing PostMesh
 	pip install -r "requirements.txt"
 
 install: before_install python
 	python setup.py build
 
+check_install:
+#check dependencies
+	@[ -d "/usr/local/include/eigen/" ] && echo "Eigen exists."
+	@[ -d "/usr/local/include/Fastor/" ] && echo "Fastor exists."
+	@[ -d "$$HOME/repos/PostMesh/" ] && echo "PostMesh exists."
+	@pip check
+	@pip install --dry-run -r requirements.txt 2>&1 | grep -q "Would install" \
+		&& { echo "Missing packages:"; pip install --dry-run -r requirements.txt; exit 1; } \
+		|| echo "All Python packages are installed."
+
 run:
-	. venvpy/bin/activate
+	. venv/bin/activate
 	python setup.py build
 
 env:

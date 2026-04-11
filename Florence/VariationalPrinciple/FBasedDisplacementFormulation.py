@@ -540,6 +540,86 @@ def FillConstitutiveBF(B,SpatialGradient,ndim,nvar):
 
 
 
+class StVenantKirchhoffF(Material):
+    """The fundamental StVenantKirchhoff internal energy, converted by Smith etal 2019
+
+        W(C) = mu/4*(C-I):(C-I) + lamb/4 tr(C-I)**2
+        W(F) = kappa/8*(I2-)^2 + mu/8*(8*I1*I3 + I2^2 + 2*I1^2*I2 - 4*I2 - I1^4 + 6)
+
+    """
+
+    def __init__(self, ndim, **kwargs):
+        mtype = type(self).__name__
+        super(StVenantKirchhoffF, self).__init__(mtype, ndim, **kwargs)
+
+        self.is_transversely_isotropic = False
+        self.energy_type = "internal_energy"
+        self.nature = "nonlinear"
+        self.fields = "mechanics"
+
+        if self.ndim==3:
+            self.H_VoigtSize = 6
+        elif self.ndim==2:
+            self.H_VoigtSize = 3
+
+        # LOW LEVEL DISPATCHER
+        # self.has_low_level_dispatcher = True
+        self.has_low_level_dispatcher = False
+
+    def KineticMeasures(self,F,ElectricFieldx=0, elem=0):
+        from Florence.MaterialLibrary.LLDispatch._NeoHookean_ import KineticMeasures
+        return KineticMeasures(self,F)
+
+
+    def Hessian(self,StrainTensors,ElectricFieldx=None,elem=0,gcounter=0):
+
+        I = StrainTensors['I']
+        J = StrainTensors['J'][gcounter]
+        b = StrainTensors['b'][gcounter]
+        F = StrainTensors['F'][gcounter]
+        C = np.dot(F.T,F)
+
+        mu = self.mu
+        lamb = self.lamb
+        # This is SPD
+        C_Voigt = lamb * np.einsum("ij,kl",I,I) + mu * (np.einsum("ik,jl",I,I) + np.einsum("il,jk",I,I))
+        C_Voigt = Voigt(C_Voigt,1)
+
+        self.H_VoigtSize = C_Voigt.shape[0]
+
+        return C_Voigt
+
+    def CauchyStress(self,StrainTensors,ElectricFieldx=None,elem=0,gcounter=0):
+
+        I = StrainTensors['I']
+        J = StrainTensors['J'][gcounter]
+        b = StrainTensors['b'][gcounter]
+        F = StrainTensors['F'][gcounter]
+        C = np.dot(F.T,F)
+
+        mu = self.mu
+        lamb = self.lamb
+        E = 0.5 * (C - I)
+        stress = lamb * trace(E) * I + 2. * mu * E
+
+        return stress
+
+
+    def InternalEnergy(self,StrainTensors,elem=0,gcounter=0):
+
+        I = StrainTensors['I']
+        J = StrainTensors['J'][gcounter]
+        F = StrainTensors['F'][gcounter]
+        C = np.dot(F.T,F)
+
+        mu = self.mu
+        lamb = self.lamb
+
+        energy  = mu/4*np.einsum("ij,ij",C-I,C-I) + lamb/8 * trace(C-I)**2
+
+        return energy
+
+
 
 
 class NeoHookeanF(Material):
@@ -621,6 +701,7 @@ class NeoHookeanF(Material):
         energy  = mu/2.*(trace(C) - 3.) - mu*np.log(J) + lamb/2.*np.log(J)**2
 
         return energy
+
 
 
 
@@ -715,6 +796,7 @@ class PixarNeoHookeanF(Material):
         energy  = mu/2.*(trace(C) - 3.) - mu*(J-1) + lamb/2.*(J-1.)**2
 
         return energy
+
 
 
 
@@ -1052,7 +1134,6 @@ class MIPSF(Material):
 
 
 
-
 class MIPSF2(Material):
     """The MIPS energy
 
@@ -1238,8 +1319,6 @@ class MIPSF2(Material):
 
 
 
-
-
 class MIPSF3(Material):
     """The MIPS energy
 
@@ -1408,14 +1487,6 @@ class MIPSF3(Material):
 
 
         return energy
-
-
-
-
-
-
-
-
 
 
 
@@ -1979,7 +2050,6 @@ class SymmetricARAPF(Material):
 
 
 
-
 class OgdenNeoHookeanF(Material):
     """ Ogden neoHookean model
 
@@ -2383,8 +2453,6 @@ class MIPS_F(Material):
 
 
 
-
-
 class MooneyRivlinF(Material):
     """ Polyconvex Mooney Rivlin model: this implementation uses polyconvex formulation of Bonet et. al. 2014
 
@@ -2529,8 +2597,6 @@ class MooneyRivlinF(Material):
         energy = mu1 * (II_F - N) + mu2 * (II_H - N) - (2. * mu1 + 4. * mu2) * np.log(J) + lamb / 2. * (J - 1)**2
 
         return energy
-
-
 
 
 
