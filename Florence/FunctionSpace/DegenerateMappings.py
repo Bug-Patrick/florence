@@ -24,6 +24,8 @@ def MapRST2XiEtaZeta(r,s,t):
 # MAPPING FROM TRI TO QUAD
 def MapXiEta2RS(xi,eta):
 
+	is_scalar = 'array' not in str(type(eta))
+
 	if 'array' in str(type(eta)):
 		xi = xi.reshape(xi.size); eta = eta.reshape(eta.size)
 		xi = np.array([xi]); eta = np.array([eta])
@@ -45,11 +47,18 @@ def MapXiEta2RS(xi,eta):
 	r[posNoSingular] = 2.*(1.+xi[posNoSingular] )/(1.- eta[posNoSingular]) - 1.
 	s = eta
 
+	# If input was scalar, return scalars instead of shape (1,) arrays
+	if is_scalar:
+		r = r[0]
+		s = s[0]
+	
 	return r, s
 
 
 # MAPPING FROM TET TO HEX
 def MapXiEtaZeta2RST(xi,eta,zeta):
+
+	is_scalar = 'array' not in str(type(eta))
 
 	if 'array' in str(type(eta)):
 		xi = xi.reshape(xi.size); eta = eta.reshape(eta.size); zeta = zeta.reshape(zeta.size); 
@@ -77,5 +86,11 @@ def MapXiEtaZeta2RST(xi,eta,zeta):
 	r[posNoSingular1] = -2.*(1.+xi[posNoSingular1])/(eta[posNoSingular1]+zeta[posNoSingular1]) - 1.
 	s[posNoSingular2] = 2.*(1.+eta[posNoSingular2])/(1.-zeta[posNoSingular2]) - 1.
 	t = zeta
+
+	# If input was scalar, return scalars instead of shape (1,) arrays
+	if is_scalar:
+		r = r[0]
+		s = s[0]
+		t = t[0]
 
 	return r, s, t 
