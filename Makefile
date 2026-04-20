@@ -35,6 +35,7 @@ before_install: apt_dependencies outer_dependencies custom_dependencies
 	sudo ldconfig
 
 apt_dependencies:
+	sudo apt install python3.12-venv python3-dev
 	sudo apt install curl
 # Install BLAS libraries
 	sudo apt install -y gfortran libblas-dev liblapack-dev libatlas-base-dev libopenblas-* libsuitesparse-dev swig
@@ -61,9 +62,8 @@ PostMesh:
 # provide own Makefile and Instructions, Is PostMesh in Path? or how can Florence link to it?
 
 Fastor:
-	cd ~/repos
-	git clone https://github.com/romeric/Fastor ~/repos/Fastor
-	sudo mv Fastor /usr/local/include/Fastor/
+	cd ~/repos && git clone https://github.com/romeric/Fastor ~/repos/Fastor
+	cd ~/repos && sudo mv Fastor /usr/local/include/Fastor/
 
 python:
 # Setup python venv
@@ -94,6 +94,8 @@ run:
 env:
 # limitation of Makefile, as it is a process run in its own environment! -> .sh better
 # if-else to prevent a trailing colon :
+	export CC=usr/bin/gcc
+	export CXX=usr/bin/g++
 	@if [ -z "$$PYTHONPATH" ]; then \
 		echo "export PYTHONPATH=$(FLORENCEPATH)"; \
 	else \
