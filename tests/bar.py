@@ -54,16 +54,17 @@ def bar_NL_tests():
     
 
     # set up variational form
-    formulation = CBasedDisplacementFormulation(mesh)
+    formulation = FBasedDisplacementFormulation(mesh)
     # FBasedDisplacmentFormulation; CBasedDisplacementFormulation; DisplacementFormulation
 
     # set up solver
+    # careful to not enable low-level dispatcher: if(has_low_level_dispatcher != optimise): has_low_level_dispatcher = True
     fem_solver = FEMSolver(
         number_of_load_increments=increment_step,
         analysis_type="static",
-        # analysis_subtype="explicit", # Explicit or implicit??
+        # analysis_subtype="explicit", # Explicit or implicit -> implicit is parallelizable method using row,col,val-triplets 
         analysis_nature="nonlinear",
-        optimise=True,
+        # optimise=True, # has_low_level_dispatcher=False, # True-False is bad combination?
         memory_store_frequency=20)
 
     solution = fem_solver.Solve(formulation=formulation, material=material, mesh=mesh,
@@ -152,5 +153,5 @@ def bar_NH():
 
 
 if __name__ == "__main__":
-    bar_NH()
+    # bar_NH()
     bar_NL_tests()
