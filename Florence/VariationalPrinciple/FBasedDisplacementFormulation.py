@@ -2614,7 +2614,7 @@ class MooneyRivlinF(Material):
 
 
 
-__all__ = ["FBasedDisplacementFormulation"]
+# __all__ = ["FBasedDisplacementFormulation"] # This way experimental material models were hidden
 
 class FBasedDisplacementFormulation(VariationalPrinciple):
 

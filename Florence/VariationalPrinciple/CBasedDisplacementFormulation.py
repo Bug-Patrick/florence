@@ -1109,7 +1109,7 @@ class MIPS_b(Material):
 
 
 
-__all__ = ["CBasedDisplacementFormulation"]
+# __all__ = ["CBasedDisplacementFormulation"]
 
 class CBasedDisplacementFormulation(VariationalPrinciple):
 
