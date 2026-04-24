@@ -27,10 +27,10 @@ def bar():
         # Neumann boundary with -100 force in x or y direction at element 44 - nan values as free boundary
         boundary_data = np.zeros((mesh.points.shape[0], 3)) + np.nan
 
-        # at right (X=0, Y=Z=0.5) a x-direction force of -100
+        # at right (X=0, Y=Z=0.5) a y-direction force of -100
         NeumannBC = (0., 0.5, 0.5)
         idx = np.where((mesh.points[:] == NeumannBC).all(axis=1))[0]
-        boundary_data[idx, 0] = -100.
+        boundary_data[idx, 1] = -100.
         return boundary_data
 
     boundary_condition = BoundaryCondition()
@@ -52,9 +52,11 @@ def bar():
 
     # check validity ?
     solution_vectors = solution.GetSolutionVectors()
+    sol_2d = solution_vectors.squeeze(axis=-1) # removes an axis from shape (55, 3, 1)
+    np.savetxt('bar_linear_displacements_florence.txt', sol_2d, delimiter=',', header='u_x,u_y,u_z', comments='')
 
-    # export 0.result field to vtk file
-    solution.WriteVTK("bar_linear", quantity=0)
+    # export 1.result field (0-2:u_x,u_y,u_z) to vtk file
+    solution.WriteVTK("bar_linear", quantity=1)
 
 
 if __name__ == "__main__":
