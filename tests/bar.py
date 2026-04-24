@@ -61,15 +61,15 @@ def bar_NL_tests():
     """
 
     # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = bar_problem_setup()
+    mesh, boundary_condition, fem_solver = bar_problem_setup(increments=1, force_direction=1, force_magnitude=-1000)
 
     # Set material data
     youngs_modulus = 502000
     poissons_ratio = 0.4
-    # material = NeoHookean(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4)
     lame_parameter_1 = youngs_modulus * poissons_ratio / ((1 + poissons_ratio) * (1 - 2 * poissons_ratio))
     lame_parameter_2 = youngs_modulus / (2 * (1 + poissons_ratio))
 
+    # material = NeoHookean(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4)
     material = NeoHookeanF(mesh.ndim, lamb=lame_parameter_1, mu=lame_parameter_2)  # first parameter ndim
     # NeoHookeanF ? OgdenNeoHookeanC ? StVenantKirchhoffC
 
@@ -80,7 +80,6 @@ def bar_NL_tests():
 
     solution = fem_solver.Solve(formulation=formulation, material=material, mesh=mesh,
                                 boundary_condition=boundary_condition)
-
 
     # check validity ?
     solution_vectors = solution.GetSolutionVectors()
@@ -108,28 +107,27 @@ def bar_MR(simulation_type="F", stabilise_tangents=True):
     """
 
     # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = bar_problem_setup(increments=1, force_direction=1, force_magnitude=-100000)
+    mesh, boundary_condition, fem_solver = bar_problem_setup(increments=1, force_direction=0, force_magnitude=-10000)
 
     # Set material data
     youngs_modulus = 502000
     poissons_ratio = 0.4
-    # material = NeoHookean(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4)
     lamb = youngs_modulus * poissons_ratio / ((1 + poissons_ratio) * (1 - 2 * poissons_ratio))
     mu = youngs_modulus / (2 * (1 + poissons_ratio))
     # lamb, mu = 717142.8571428574, 179285.7142857143
 
     # split mu1=C10 and mu2=C01 for Mooney-Rivlin?
-    # Gemini says: C10 = 0.41 MPa and C01 = 0.43 MPa? were to gain reliable values?
+    # Gemini says: C10 = 0.41 MPa and C01 = 0.43 MPa? are reliable values?
 
     if(simulation_type == "F"):
         # Set material data
-        material = MooneyRivlinF(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=1, stabilise_tangents=stabilise_tangents)
+        material = MooneyRivlinF(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5, stabilise_tangents=stabilise_tangents)
 
         # set up variational form
         formulation = FBasedDisplacementFormulation(mesh)
     else:
         # Set material data
-        material = MooneyRivlin(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=1)
+        material = MooneyRivlin(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5)
 
         # set up variational form
         formulation = DisplacementFormulation(mesh)
@@ -141,53 +139,44 @@ def bar_MR(simulation_type="F", stabilise_tangents=True):
     solution_vectors = solution.GetSolutionVectors()
 
     # export 0.result field to vtk file
-    solution.WriteVTK("bar_MR_"+simulation_type, quantity=0)
+    solution.WriteVTK("bar_MR_" + simulation_type, quantity=0)
 
 
 
 
-def bar_NH_F():
+
+def bar_NH(simulation_type="F", material_formulation=1, stabilise_tangents=False):
     """An use case of solving a bar problem using
         linear elements read from a gmsh file
 
-        Inspired by Car Crash analysis example but removing contact and dynamics
+        simulation_type: F or TL for FBased or standard Total Lagrangian formulation
+        material_formulation: provide an index for using a specific Neo-Hookean energy formulation tied to simulation_type="F"
+        stabilise_tangents: probably not implemented
     """
 
     # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = bar_problem_setup()
+    mesh, boundary_condition, fem_solver = bar_problem_setup(increments=1, force_direction=1, force_magnitude=-1000)
 
-    # Set material data
-    material = OgdenNeoHookeanF(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4, minJ=1)
+    if(simulation_type == "F"):
+        # Set material data depending on 
+        if material_formulation == 1:
+            material = NeoHookeanF(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4, stabilise_tangents=stabilise_tangents)
+        elif material_formulation == 2:
+            material = OgdenNeoHookeanF(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4, minJ=0.5, stabilise_tangents=stabilise_tangents)
+        elif material_formulation == 3:
+            material = PixarNeoHookeanF(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4, stabilise_tangents=stabilise_tangents)
+        else:
+            material = NeoHookeanF(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4, stabilise_tangents=stabilise_tangents)
 
-    # set up variational form
-    formulation = FBasedDisplacementFormulation(mesh)
+        # set up variational form
+        formulation = FBasedDisplacementFormulation(mesh)
+    else:
+        # Set material data
+        material = NeoHookean(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4)
 
-    solution = fem_solver.Solve(formulation=formulation, material=material, mesh=mesh,
-        boundary_condition=boundary_condition)
-
-    # check validity ?
-    solution_vectors = solution.GetSolutionVectors()
-
-    # export 0.result field to vtk file
-    solution.WriteVTK("bar_NH_F", quantity=0)
-
-
-
-
-
-def bar_NH():
-    """An use case of solving a bar problem using
-        linear elements read from a gmsh file
-    """
-
-    # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = bar_problem_setup()
-
-    # Set material data
-    material = NeoHookean(mesh.ndim, youngs_modulus=502000, poissons_ratio=0.4)
-
-    # set up variational form
-    formulation = DisplacementFormulation(mesh)
+        # set up variational form
+        formulation = DisplacementFormulation(mesh)
+    
 
     solution = fem_solver.Solve(formulation=formulation, material=material, mesh=mesh,
         boundary_condition=boundary_condition)
@@ -196,8 +185,9 @@ def bar_NH():
     solution_vectors = solution.GetSolutionVectors()
 
     # export 1.result field (0-2:u_x,u_y,u_z) to vtk file
-    solution.WriteVTK("bar_NH", quantity=1)
+    solution.WriteVTK("bar_NH_" + simulation_type, quantity=1)
 
+    # return solution # postprecessing and automatic validation
     return solution_vectors
 
 
@@ -207,7 +197,8 @@ def bar_NH():
 
 if __name__ == "__main__":
     bar_MR(simulation_type="F", stabilise_tangents=True)
+    bar_MR(simulation_type="F", stabilise_tangents=False)
     bar_MR(simulation_type="TL", stabilise_tangents=False)
-    #bar_NH()
-    #bar_NH_F()
+    # bar_NH(simulation_type="F", material_formulation=3, stabilise_tangents=True)
+    # bar_NH(simulation_type="TL", stabilise_tangents=False)
     #bar_NL_tests()

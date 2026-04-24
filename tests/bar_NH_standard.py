@@ -1,6 +1,8 @@
 import numpy as np
 from Florence import *
 
+from bar import bar_NH
+
 
 def bar():
     """An use case of solving a bar problem using
@@ -66,4 +68,5 @@ def bar():
 
 
 if __name__ == "__main__":
-    bar()
+    # bar()
+    bar_NH()
