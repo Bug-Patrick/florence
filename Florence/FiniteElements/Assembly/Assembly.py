@@ -154,10 +154,18 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
             I_mass_elem = ParallelTuple[elem][5]; J_mass_elem = ParallelTuple[elem][6]; V_mass_elem = ParallelTuple[elem][6]
 
         else:
-            # COMPUATE ALL LOCAL ELEMENTAL MATRICES (STIFFNESS, MASS, INTERNAL & EXTERNAL TRACTION FORCES )
+            #if(elem < 1):
+                #print("FEM Assembly - Element "+str(elem)+" Matrix computed sequentially ")
+                # COMPUATE ALL LOCAL ELEMENTAL MATRICES (STIFFNESS, MASS, INTERNAL & EXTERNAL TRACTION FORCES )
             I_stiff_elem, J_stiff_elem, V_stiff_elem, t, f, \
             I_mass_elem, J_mass_elem, V_mass_elem = formulation.GetElementalMatrices(elem,
                 function_space, mesh, material, fem_solver, Eulerx, Eulerp)
+
+            # TODO Write I,J,V pair for stiff to disk
+            #if(elem <= 1):
+                #np.savetxt('stiff_elem_I'+str(elem)+'.txt', I_stiff_elem, delimiter=',', header='I', comments='')
+                #np.savetxt('stiff_elem_J'+str(elem)+'.txt', J_stiff_elem, delimiter=',', header='J', comments='')
+                #np.savetxt('stiff_elem_V'+str(elem)+'.txt', V_stiff_elem, delimiter=',', header='V', comments='')
 
         if fem_solver.recompute_sparsity_pattern:
             # SPARSE ASSEMBLY - STIFFNESS MATRIX

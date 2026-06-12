@@ -2,7 +2,7 @@ import numpy as np
 from Florence import *
 
 
-def bar_problem_setup(increments=1, force_direction=1, force_magnitude=-100):
+def bar_problem_setup(stabilise=False,increments=1, force_direction=1, force_magnitude=-100):
     """Setup bar problem common between VariationalFormulations and Materials
         increments: number of load increments for nonlinear analysis
         force_direction: 0 for x, 1 for y, 2 for z direction; standard is y direction!
@@ -45,7 +45,20 @@ def bar_problem_setup(increments=1, force_direction=1, force_magnitude=-100):
         # analysis_subtype="explicit", # Explicit or implicit??
         analysis_nature="nonlinear",
         # optimise=True, # has_low_level_dispatcher=False, # True-False is bad combination: RuntimeError: Cannot dispatch to low level module since material NeoHookeanF does not support it
-        memory_store_frequency=20)
+        memory_store_frequency=20,
+        print_incremental_log=True,
+        save_incremental_solution=True,
+        incremental_solution_filename="filename",
+        stabilise_local_system=stabilise#, # stabilise using analytic eigensystem
+        #activate_line_search
+        #activate_arc_length
+        #newton_raphson_tolerance
+        #newton_raphson_solution_tolerance
+        #maximum_iteration_for_newton_raphson
+        #nonlinear_iterative_technique
+        #line_search_technique
+        #stabilise_global_system # stabilise using eigenvalue decomposition?
+        )
     
     return mesh, boundary_condition, fem_solver
 
@@ -61,7 +74,7 @@ def bar_NL_tests():
     """
 
     # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = bar_problem_setup(increments=1, force_direction=1, force_magnitude=-1000)
+    mesh, boundary_condition, fem_solver = bar_problem_setup(stabilise=False, increments=1, force_direction=1, force_magnitude=-1000)
 
     # Set material data
     youngs_modulus = 502000
@@ -107,7 +120,7 @@ def bar_MR(simulation_type="F", stabilise_tangents=True):
     """
 
     # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = bar_problem_setup(increments=1, force_direction=0, force_magnitude=-10000)
+    mesh, boundary_condition, fem_solver = bar_problem_setup(stabilise=stabilise_tangents,increments=1, force_direction=0, force_magnitude=1000000)
 
     # Set material data
     youngs_modulus = 502000
@@ -124,6 +137,7 @@ def bar_MR(simulation_type="F", stabilise_tangents=True):
         material = MooneyRivlinF(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5, stabilise_tangents=stabilise_tangents)
 
         # set up variational form
+        print("Stabilisation: "+str(stabilise_tangents))
         formulation = FBasedDisplacementFormulation(mesh)
     else:
         # Set material data
@@ -198,7 +212,7 @@ def bar_NH(simulation_type="F", material_formulation=1, stabilise_tangents=False
 if __name__ == "__main__":
     bar_MR(simulation_type="F", stabilise_tangents=True)
     bar_MR(simulation_type="F", stabilise_tangents=False)
-    bar_MR(simulation_type="TL", stabilise_tangents=False)
+    # bar_MR(simulation_type="TL", stabilise_tangents=False)
     # bar_NH(simulation_type="F", material_formulation=3, stabilise_tangents=True)
     # bar_NH(simulation_type="TL", stabilise_tangents=False)
     #bar_NL_tests()

@@ -318,7 +318,7 @@ def GetInitialStiffnessPolyconvex(sigmaH, sigmaJ, F, stabilise=False, eps=1e-6):
         # return xx
 
         if ndim == 3:
-
+            #print("Calculate stabilised stiffness")
             # Get SVD of F
             [U, S, Vh] = svd(F, full_matrices=True); V = Vh.T
             s1 = S[0]
@@ -373,6 +373,14 @@ def GetInitialStiffnessPolyconvex(sigmaH, sigmaJ, F, stabilise=False, eps=1e-6):
 
             # Build sigmaJ * IxF
             ds = np.array([d1,d2,d3]).T
+            # two chained indexing operations:
+            # vecs[:,0] — extracts the first column (first eigenvector), giving a 1D array of shape (n,)
+            # [None,:] — None (same as np.newaxis) inserts a new axis, reshaping it to (1, n)
+            # Result: a 2D row vector of shape (1, n) instead of a flat 1D array.
+            #HwSPD = lamb1 * np.outer(vecs[:,0], vecs[:,0]) \
+            #    + lamb2 * np.outer(vecs[:,1], vecs[:,1]) \
+            #    + lamb3 * np.outer(vecs[:,2], vecs[:,2])
+
             HwSPD = lamb1 * vecs[:,0][None,:].T.dot(vecs[:,0][None,:]) + lamb2 * vecs[:,1][None,:].T.dot(vecs[:,1][None,:]) +\
                 + lamb3 * vecs[:,2][None,:].T.dot(vecs[:,2][None,:])
             sigmaJIxF = ds.dot(HwSPD.dot(ds.T)) + \
@@ -2498,6 +2506,11 @@ class MooneyRivlinF(Material):
         ndim = self.ndim
         I = np.eye(ndim*ndim,ndim*ndim)
 
+        #print("MR Hessian for element "+str(elem)+" with/without stabilisation: "+str(self.stabilise_tangents))
+        #print("Given material input: mu1="+str(mu1)+"mu2="+str(mu2)+"lambda="+str(lamb))
+        #print("Kinematic input: J="+str(J))
+        #print("Kinematic input: F="+str(F))
+
         if ndim == 3:
 
             H = dJdF(F)
@@ -2511,16 +2524,32 @@ class MooneyRivlinF(Material):
 
             fxIxf = Get_FxIxF(F)
 
+            #print("Kinematic input: H="+str(H))
+
+            #print("Spanning 4th order Tensors")
+            #print("fxIxf "+ str(fxIxf))
+            #print("Vectorization of Covactor in outer product"+str(np.outer(h, h)))
+
+            #print("Coefficients for 4th order")
+            #print("WJJ= "+str(WJJ))
+            #print("sigmaH= "+str(sigmaH))
+            #print("sigmaJ= "+str(sigmaJ))
+
             # Constitutive
-            hessian = 2. * mu1 * I + 2. * mu2 * fxIxf + WJJ * np.outer(h, h)
-            # Initail stiffness component
+            hessian = 2. * mu1 * I
+            hessian += 2. * mu2 * fxIxf
+            hessian += WJJ * np.outer(h, h)
+
+            # Initial stiffness component
             # initial_stiffness = d2JdFdF(sigmaH + sigmaJ * F)
             initial_stiffness = GetInitialStiffnessPolyconvex(sigmaH, sigmaJ, F,
                 stabilise=self.stabilise_tangents,
                 # stabilise=False,
                 eps=self.tangent_stabiliser_value
                 )
+            #print("Initial stiffness="+str(initial_stiffness))
             hessian += initial_stiffness
+            #print("Hessian: H="+str(hessian))
 
         elif ndim == 2:
 
@@ -2657,6 +2686,8 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
         # COMPUTE THE STIFFNESS MATRIX
         stiffnessel, t = self.GetLocalStiffness(function_space,material,
                 LagrangeElemCoords,EulerElemCoords,fem_solver,elem)
+        # Print direct computed stiffness
+        np.savetxt('stiffness_elem'+str(elem)+'.txt', stiffnessel, delimiter=',', header='stiffness', comments='')
 
         I_mass_elem = []; J_mass_elem = []; V_mass_elem = []
         if fem_solver.analysis_type != 'static' and fem_solver.is_mass_computed is False:
@@ -2668,6 +2699,7 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
 
         I_stiff_elem, J_stiff_elem, V_stiff_elem = self.FindIndices(stiffnessel)
+        # I, J, V from here
         if fem_solver.analysis_type != 'static' and fem_solver.is_mass_computed is False:
             I_mass_elem, J_mass_elem, V_mass_elem = self.FindIndices(massel)
 
@@ -2751,6 +2783,8 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
             # COMPUTE THE TANGENT STIFFNESS MATRIX
             BDB_1, t = self.ConstitutiveStiffnessIntegrand(B, SpatialGradient[counter,:,:],
                 CauchyStressTensor, H_Voigt, requires_geometry_update=fem_solver.requires_geometry_update)
+
+            #print("ConstitutiveStiffnessIntegrand = BDB of Gauss point"+str(BDB_1))
 
             # INTEGRATE TRACTION FORCE
             if fem_solver.requires_geometry_update:
