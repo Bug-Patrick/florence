@@ -120,7 +120,7 @@ def bar_MR(simulation_type="F", stabilise_tangents=True):
     """
 
     # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = bar_problem_setup(stabilise=stabilise_tangents,increments=1, force_direction=0, force_magnitude=1000000)
+    mesh, boundary_condition, fem_solver = bar_problem_setup(stabilise=stabilise_tangents,increments=1, force_direction=1, force_magnitude=100)
 
     # Set material data
     youngs_modulus = 502000
@@ -154,6 +154,8 @@ def bar_MR(simulation_type="F", stabilise_tangents=True):
 
     # export 0.result field to vtk file
     solution.WriteVTK("bar_MR_" + simulation_type, quantity=0)
+    solution.WriteVTK("bar_MR_" + simulation_type, quantity=1)
+    solution.WriteVTK("bar_MR_" + simulation_type, quantity=2)
 
 
 
@@ -210,8 +212,8 @@ def bar_NH(simulation_type="F", material_formulation=1, stabilise_tangents=False
 
 
 if __name__ == "__main__":
-    bar_MR(simulation_type="F", stabilise_tangents=True)
-    bar_MR(simulation_type="F", stabilise_tangents=False)
+    bar_MR(simulation_type="F", stabilise_tangents=False) # Validate unstabilised stiffness!
+    # bar_MR(simulation_type="F", stabilise_tangents=True)
     # bar_MR(simulation_type="TL", stabilise_tangents=False)
     # bar_NH(simulation_type="F", material_formulation=3, stabilise_tangents=True)
     # bar_NH(simulation_type="TL", stabilise_tangents=False)

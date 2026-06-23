@@ -2549,7 +2549,14 @@ class MooneyRivlinF(Material):
                 )
             #print("Initial stiffness="+str(initial_stiffness))
             hessian += initial_stiffness
-            #print("Hessian: H="+str(hessian))
+
+            if elem == 0:
+                self._stiff_file = open('element_hessians.txt', 'w')
+
+            self._stiff_file.write(f"Element {elem} Hessian Matrix: shape {hessian.shape}\n")
+            # self._stiff_file.write(f"Nodes: {mesh.elements[elem,:]}\n")
+            np.savetxt(self._stiff_file, hessian, fmt='%.10e', delimiter=',')
+            self._stiff_file.write("\n")
 
         elif ndim == 2:
 
@@ -2686,8 +2693,20 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
         # COMPUTE THE STIFFNESS MATRIX
         stiffnessel, t = self.GetLocalStiffness(function_space,material,
                 LagrangeElemCoords,EulerElemCoords,fem_solver,elem)
-        # Print direct computed stiffness
-        np.savetxt('stiffness_elem'+str(elem)+'.txt', stiffnessel, delimiter=',', header='stiffness', comments='')
+        
+        # EXPORT THE ELEMENT STIFFNESS 12x12 for linear tetrahedron
+        # np.savetxt('stiffness_elem'+str(elem)+'.txt', stiffnessel, delimiter=',', header='stiffness', comments='')
+        
+        if elem == 0:
+            self._stiff_file = open('stiffness_elements.txt', 'w')
+
+        self._stiff_file.write(f"Element {elem}\n")
+        self._stiff_file.write(f"Nodes: {mesh.elements[elem,:]}\n")
+        np.savetxt(self._stiff_file, stiffnessel, fmt='%.10e', delimiter=',')
+        self._stiff_file.write("\n")
+
+        #if elem == nelem - 1:
+        #    self._stiff_file.close()
 
         I_mass_elem = []; J_mass_elem = []; V_mass_elem = []
         if fem_solver.analysis_type != 'static' and fem_solver.is_mass_computed is False:

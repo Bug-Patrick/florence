@@ -19,7 +19,7 @@ help:
 	@echo '	custom_dependencies	Install PostMesh and Fastor from Roman Poya'
 	@echo '	PostMesh		Install PostMesh from Roman Poya ~ via own Fork'
 	@echo '	Fastor			Install Fastor from Roman Poya'
-	@echo '	python			DOESNT WORK - COPY TO CMD SHELL - create Virtual Environment with installed packages from requirements'
+	@echo '	python			DOESNT WORK - COPY TO CMD SHELL: source venv/bin/activate - create Virtual Environment with installed packages from requirements'
 	@echo '	install			first time cython execution'
 	@echo '	check_install		first time cython execution'
 	@echo '	run			recurring cython execution'
