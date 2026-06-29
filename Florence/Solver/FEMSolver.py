@@ -640,6 +640,41 @@ class FEMSolver(object):
                 # mesh.InferSpatialDimension() * mesh.nnode, formulation.nvar)
             K, TractionForces, _, _ = Assemble(self, function_spaces[0], formulation, mesh, material,
                 Eulerx, Eulerp)
+
+            print(f"\n=== DEBUG: Pre-processing ===")
+            print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
+            print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
+            # print(f"  norm(K): {la.norm(K):.6e}") # Error
+
+            print_reduced_system = True
+
+            # Save NOT or reduced matrix: extra DoF from Dirichlet boundary conditions: 165 instead of 150 DoF in reduced system
+            if not print_reduced_system:
+                np.savetxt(f'florence It0 TractionForces.csv', TractionForces.flatten(),
+                        fmt='%.10e', delimiter=',',
+                        header=f'f_int (TractionForces) assembled at Iter 0')
+
+                if sp.sparse.issparse(K):
+                    np.savetxt(f'florence It0 K.csv', K.toarray(),
+                                fmt='%.10e', delimiter=',',
+                                header=f'Reduced K that would be used in Iter 0')
+                else:
+                    np.savetxt(f'florence It0 K.csv', K,
+                                fmt='%.10e', delimiter=',')
+            else:
+                K_b, F_b = boundary_condition.GetReducedMatrices(K, Residual)[:2]
+                np.savetxt(f'florence It0 Force_RHS.csv', (-F_b).flatten(),
+                        fmt='%.10e', delimiter=',',
+                        header=f'RHS (-F_b) that would be solved in Iter 0')
+
+                if sp.sparse.issparse(K):
+                    np.savetxt(f'florence It0 K_reduced.csv', K_b.toarray(),
+                                fmt='%.10e', delimiter=',',
+                                header=f'Reduced K that would be used in Iter 0')
+                else:
+                    np.savetxt(f'florence It0 K_reduced.csv', K_b,
+                                fmt='%.10e', delimiter=',')
+            
         else:
             if self.reduce_quadrature_for_quads_hexes:
                 fspace = function_spaces[0] if (mesh.element_type=="hex" or mesh.element_type=="quad") else function_spaces[1]
@@ -701,6 +736,7 @@ class FEMSolver(object):
             else:
                 raise RuntimeError("Iterative technique for nonlinear solver not understood")
 
+            # Comment by Poya
             # from FEMSolverDisplacementControl import StaticSolverDisplacementControl
             # TotalDisp = StaticSolverDisplacementControl(self,function_spaces, formulation, solver,
             #     K,NeumannForces,NodalForces,Residual,
@@ -1002,6 +1038,45 @@ class FEMSolver(object):
                 if norm(dU) <=  self.newton_raphson_solution_tolerance:
                     print("Incremental solution within tolerance i.e. norm(dU): {}".format(norm(dU)))
                     break
+            
+            debug_stop_after_iter = 0  # <--- HIER EINSTELLEN: nach welcher Iteration abbrechen
+
+            if Iter == debug_stop_after_iter:
+                # Export aktueller Zustand
+                print(f"\n=== DEBUG: Increment {Increment}, Iter {Iter} ===")
+                print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
+                print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
+                print(f"  norm(dU): {la.norm(dU):.6e}")
+
+                # Gleichungssystem der NÄCHSTEN Iteration exportieren (vor dem Solve)
+                np.savetxt(f'florence It{Iter} Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
+                        header=f'Eulerx after Iter {Iter} update, before Iter {Iter+1} solve')
+                np.savetxt(f'florence It{Iter} TractionForces---.csv', TractionForces.flatten(),
+                        fmt='%.10e', delimiter=',',
+                        header=f'f_int (TractionForces) assembled at Iter {Iter+1}')
+
+                # Exportiere das Gleichungssystem, das in Iter+1 gelöst werden WÜRDE
+                K_b, F_b = boundary_condition.GetReducedMatrices(K, Residual)[:2]
+
+                np.savetxt(f'florence It{Iter+1} Force_RHS.csv', (-F_b).flatten(),
+                           fmt='%.10e', delimiter=',',
+                           header=f'RHS (-F_b) that would be solved in Iter {Iter+1}')
+                # Optional: Stiffness
+                if sp.sparse.issparse(K_b):
+                    np.savetxt(f'florence It{Iter+1} K_reduced.csv', K_b.toarray(),
+                               fmt='%.10e', delimiter=',',
+                               header=f'Reduced K that would be used in Iter {Iter+1}')
+                else:
+                    np.savetxt(f'florence It{Iter+1} K_reduced.csv', K_b,
+                               fmt='%.10e', delimiter=',')
+
+                print(f"\n  >>> DEBUG STOP: Abbruch nach Iteration {Iter}.")
+                print(f"  >>> Gleichungssystem für Iter {Iter+1} exportiert.")
+                print(f"  >>> Dateien: debug_NR_*.csv")
+                raise SystemExit(f"Controlled debug stop after NR iteration {Iter}")
+                # different implementation option:
+                #self.newton_raphson_failed_to_converge = True
+                #break
 
             # UPDATE ITERATION NUMBER
             Iter +=1

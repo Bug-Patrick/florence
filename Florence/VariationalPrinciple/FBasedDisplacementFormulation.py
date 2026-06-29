@@ -2614,6 +2614,57 @@ class MooneyRivlinF(Material):
 
             P = sigmaF + sigmaJ * H
 
+        if elem == 0:
+            fh = open('element_PK1stress.txt', 'w')
+            fh.write(f"# Element 1.Piola-Kirchhoff stress tensor (P)\n")
+            fh.write(f"# Format: DOF order is [P_xx, P_xy, P_xz, P_xy, ...]\n\n")
+        else:
+            fh = open('element_PK1stress.txt', 'a')
+        
+        fh.write(f"# Element {elem}\n")
+        np.savetxt(fh, P.flatten().reshape(1,-1), fmt='%+.10e', delimiter=', ')
+        fh.write(f"\n")
+        fh.close()
+
+        #print(f'Element {elem} PK1 stress tensor {P.flatten()}\n')
+
+        if elem == 0:
+            fk = open('element_kinematics.txt', 'w')
+            fk.write(f"# Element Kinematic Measures and Invariants\n")
+            fk.write(f"# mu1={mu1}, mu2={mu2}, lambda={lamb}\n\n")
+        else:
+            fk = open('element_kinematics.txt', 'a')
+
+        # Invariants of the polyconvex energy W(F, H, J)
+        I_F = np.tensordot(F, F)          # F:F = tr(F^T F) = tr(C)
+        I_H = np.tensordot(H, H)          # H:H = tr(H^T H) = tr(G)
+
+        # Energy contributions (for verification)
+        W_F = mu1 * I_F                   # mu1 * (F:F)
+        W_H = mu2 * I_H                   # mu2 * (H:H)
+        W_J = -(2.*mu1 + 4.*mu2) * np.log(J) + 0.5 * lamb * (J - 1.)**2
+
+        fk.write(f"# Element {elem} | Gauss point {gcounter}\n")
+        fk.write(f"#   J = {J:+.10e}\n")
+        fk.write(f"#   I_F (F:F) = {I_F:+.10e}\n")
+        fk.write(f"#   I_H (H:H) = {I_H:+.10e}\n")
+        fk.write(f"#   sigmaJ = {sigmaJ:+.10e}\n")
+        fk.write(f"#   W_F = {W_F:+.10e},  W_H = {W_H:+.10e},  W_J = {W_J:+.10e}\n")
+        fk.write(f"#   W_total = {W_F + W_H + W_J:+.10e}\n")
+        fk.write(f"# F (row-major):\n")
+        np.savetxt(fk, F.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+        fk.write(f"# H = cof(F) (row-major):\n")
+        np.savetxt(fk, H.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+        fk.write(f"# sigmaF (row-major):\n")
+        np.savetxt(fk, sigmaF.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+        if ndim == 3:
+            fk.write(f"# sigmaH (row-major):\n")
+            np.savetxt(fk, sigmaH.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+            fk.write(f"# cross(sigmaH, F) (row-major):\n")
+            np.savetxt(fk, cross(sigmaH, F).flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+        fk.write(f"\n")
+        fk.close()
+
         return P
 
 
@@ -2736,6 +2787,14 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
         # COMPUTE THE TRACTION VECTOR
         t = self.GetLocalTraction(function_space,material,
             LagrangeElemCoords,EulerElemCoords,fem_solver,elem)
+
+        # if elem == 0:
+        #     self._stiff_file = open('tractions_elements.txt', 'w')
+
+        # self._stiff_file.write(f"Element {elem}\n")
+        # self._stiff_file.write(f"Nodes: {mesh.elements[elem,:]}\n")
+        # np.savetxt(self._stiff_file, t, fmt='%.10e', delimiter=',')
+        # self._stiff_file.write("\n")
 
         if fem_solver.analysis_type != 'static' and fem_solver.is_mass_computed is False:
             # COMPUTE THE MASS MATRIX
