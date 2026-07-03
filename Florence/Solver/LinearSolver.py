@@ -140,7 +140,7 @@ class LinearSolver(object):
 
     @property
     def WhichLinearSolver(self):
-        return self.solver_type, solver_subtype
+        return self.solver_type, self.solver_subtype
 
     @property
     def WhichLinearSolvers(self):

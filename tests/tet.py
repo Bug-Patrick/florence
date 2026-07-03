@@ -2,7 +2,7 @@ import numpy as np
 from Florence import *
 
 
-def tet_problem_setup(stabilise=False,increments=1, force_direction=1, force_magnitude=0.001):
+def tet_problem_setup(stabilise=False,increments=1, force_direction=1, force_magnitude=0.001, problem_description="florence tet"):
     """Setup bar problem common between VariationalFormulations and Materials
         increments: number of load increments for nonlinear analysis
         force_direction: 0 for x, 1 for y, 2 for z direction; standard is y direction!
@@ -50,9 +50,14 @@ def tet_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
         # === Code optimisation ===
         # optimise=True, # has_low_level_dispatcher=False, # True-False is bad combination: RuntimeError: Cannot dispatch to low level module since material NeoHookeanF does not support it
         # === Debugging prints ===
+        debug=True,
+        debug_description="Tet",
+        break_newton_raphson_after_iteration=-1,
+        write_equation_system=True,
+        write_file_name=problem_description,
         print_incremental_log=True,
         save_incremental_solution=True,
-        incremental_solution_filename="florence Tet Sol Incr",
+        incremental_solution_filename=problem_description+" Sol Incr",
         incremental_solution_save_frequency=1,
         break_at_increment=0,
         memory_store_frequency=1#,
@@ -72,7 +77,7 @@ def tet_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
 
 
 
-def tet_MR(simulation_type="F", stabilise_tangents=True):
+def tet_MR(simulation_type="F", stabilise_tangents=True, problem_description="florence tet MR"):
     """An use case of solving a bar problem using
         linear elements read from a gmsh file
 
@@ -81,7 +86,7 @@ def tet_MR(simulation_type="F", stabilise_tangents=True):
     """
 
     # Read gmsh file, create boundary conditions and solver
-    mesh, boundary_condition, fem_solver = tet_problem_setup(stabilise=stabilise_tangents,increments=1, force_direction=1, force_magnitude=100)
+    mesh, boundary_condition, fem_solver = tet_problem_setup(stabilise=stabilise_tangents,increments=1, force_direction=1, force_magnitude=100, problem_description=problem_description)
 
     # Set material data
     youngs_modulus = 502000
@@ -95,14 +100,14 @@ def tet_MR(simulation_type="F", stabilise_tangents=True):
 
     if(simulation_type == "F"):
         # Set material data
-        material = MooneyRivlinF(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5, stabilise_tangents=stabilise_tangents)
+        material = MooneyRivlinF(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5, stabilise_tangents=stabilise_tangents, debug=True, debug_file_name=problem_description)
 
         # set up variational form
         print("Stabilisation: "+str(stabilise_tangents))
         formulation = FBasedDisplacementFormulation(mesh)
     else:
         # Set material data
-        material = MooneyRivlin(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5)
+        material = MooneyRivlin(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5, debug=True, debug_file_name=problem_description)
 
         # set up variational form
         formulation = DisplacementFormulation(mesh)
@@ -114,9 +119,9 @@ def tet_MR(simulation_type="F", stabilise_tangents=True):
     solution_vectors = solution.GetSolutionVectors()
 
     # export 0.result field to vtk file
-    solution.WriteVTK("tet_MR_" + simulation_type, quantity=0)
-    solution.WriteVTK("tet_MR_" + simulation_type, quantity=1)
-    solution.WriteVTK("tet_MR_" + simulation_type, quantity=2)
+    solution.WriteVTK(problem_description + " " + simulation_type, quantity=0)
+    solution.WriteVTK(problem_description + " " + simulation_type, quantity=1)
+    solution.WriteVTK(problem_description + " " + simulation_type, quantity=2)
 
 
 

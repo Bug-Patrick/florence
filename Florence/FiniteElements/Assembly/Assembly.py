@@ -159,53 +159,50 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
             I_mass_elem, J_mass_elem, V_mass_elem = formulation.GetElementalMatrices(elem,
                 function_space, mesh, material, fem_solver, Eulerx, Eulerp)
             
-            # ============================================================
-            # DEBUG EXPORT: Element force vectors and stiffness matrices
-            # ============================================================
-            # Öffne Dateien im ersten Element, danach append
-            if elem == 0:
-                fh_t = open('element_forces.txt', 'w')
-                fh_K = open('element_stiffness.txt', 'w')
-                fh_t.write(f"# Element internal force vectors (t)\n")
-                fh_t.write(f"# nvar={nvar}, nodeperelem={nodeperelem}, ndof={ndof}\n")
-                fh_t.write(f"# Format: DOF order is [node0_x, node0_y, node0_z, node1_x, ...]\n\n")
-                fh_K.write(f"# Element stiffness matrices (K_e)\n")
-                fh_K.write(f"# nvar={nvar}, nodeperelem={nodeperelem}, ndof={ndof}\n")
-                fh_K.write(f"# Reconstructed from I,J,V triplets into dense {ndof}x{ndof} matrix\n\n")
-            else:
-                fh_t = open('element_forces.txt', 'a')
-                fh_K = open('element_stiffness.txt', 'a')
+            if fem_solver.debug:
+                if elem == 0:
+                    fh_t = open(f'{fem_solver.write_file_name} element forces.txt', 'w')
+                    fh_K = open(f'{fem_solver.write_file_name} element stiffness.txt', 'w')
+                    fh_t.write(f"# Element internal force vectors (t)\n")
+                    fh_t.write(f"# nvar={nvar}, nodeperelem={nodeperelem}, ndof={ndof}\n")
+                    fh_t.write(f"# Format: DOF order is [node0_x, node0_y, node0_z, node1_x, ...]\n\n")
+                    fh_K.write(f"# Element stiffness matrices (K_e)\n")
+                    fh_K.write(f"# nvar={nvar}, nodeperelem={nodeperelem}, ndof={ndof}\n")
+                    fh_K.write(f"# Reconstructed from I,J,V triplets into dense {ndof}x{ndof} matrix\n\n")
+                else:
+                    fh_t = open(f'{fem_solver.write_file_name} element forces.txt', 'a')
+                    fh_K = open(f'{fem_solver.write_file_name} element stiffness.txt', 'a')
 
-            # Globale Knoten-Nummern dieses Elements
-            elem_nodes = mesh.elements[elem, :]
+                # Globale Knoten-Nummern dieses Elements
+                elem_nodes = mesh.elements[elem, :]
 
-            # --- Element Kraftvektor ---
-            fh_t.write(f"# Element {elem} | Nodes: {elem_nodes.tolist()}\n")
-            fh_t.write(f"# DOF-Zuordnung: ")
-            for inode, gnode in enumerate(elem_nodes):
-                for ivar in range(nvar):
-                    dof_label = ['x','y','z'][ivar]
-                    fh_t.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
-            fh_t.write(f"\n")
-            np.savetxt(fh_t, t.flatten().reshape(1,-1), fmt='%+.10e', delimiter=', ')
-            fh_t.write(f"\n")
+                # --- Element Kraftvektor ---
+                fh_t.write(f"# Element {elem} | Nodes: {elem_nodes.tolist()}\n")
+                fh_t.write(f"# DOF-Zuordnung: ")
+                for inode, gnode in enumerate(elem_nodes):
+                    for ivar in range(nvar):
+                        dof_label = ['x','y','z'][ivar]
+                        fh_t.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
+                fh_t.write(f"\n")
+                np.savetxt(fh_t, t.flatten().reshape(1,-1), fmt='%+.10e', delimiter=', ')
+                fh_t.write(f"\n")
 
-            # --- Element Steifigkeitsmatrix aus I,J,V rekonstruieren ---
-            K_elem = np.zeros((ndof, ndof), dtype=np.float64)
-            K_elem[I_stiff_elem, J_stiff_elem] = V_stiff_elem
+                # --- Element Steifigkeitsmatrix aus I,J,V rekonstruieren ---
+                K_elem = np.zeros((ndof, ndof), dtype=np.float64)
+                K_elem[I_stiff_elem, J_stiff_elem] = V_stiff_elem
 
-            fh_K.write(f"# Element {elem} | Nodes: {elem_nodes.tolist()}\n")
-            fh_K.write(f"# DOF-Zuordnung: ")
-            for inode, gnode in enumerate(elem_nodes):
-                for ivar in range(nvar):
-                    dof_label = ['x','y','z'][ivar]
-                    fh_K.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
-            fh_K.write(f"\n")
-            np.savetxt(fh_K, K_elem, fmt='%+.10e', delimiter=', ')
-            fh_K.write(f"\n")
+                fh_K.write(f"# Element {elem} | Nodes: {elem_nodes.tolist()}\n")
+                fh_K.write(f"# DOF-Zuordnung: ")
+                for inode, gnode in enumerate(elem_nodes):
+                    for ivar in range(nvar):
+                        dof_label = ['x','y','z'][ivar]
+                        fh_K.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
+                fh_K.write(f"\n")
+                np.savetxt(fh_K, K_elem, fmt='%+.10e', delimiter=', ')
+                fh_K.write(f"\n")
 
-            fh_t.close()
-            fh_K.close()
+                fh_t.close()
+                fh_K.close()
 
         if fem_solver.recompute_sparsity_pattern:
             # SPARSE ASSEMBLY - STIFFNESS MATRIX
@@ -296,24 +293,25 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
     fem_solver.assembly_time = time() - t_assembly
 
     # Nach der Elementschleife:
-    with open('global_force.txt', 'w') as f:
-        f.write(f"Global Force Vector: shape {T.shape}\n")
-        np.savetxt(f, T.flatten(), fmt='%.10e', delimiter=',')
+    if fem_solver.debug:
+        with open(f'{fem_solver.write_file_name} global force.txt', 'w') as f:
+            f.write(f"Global Force Vector: shape {T.shape}\n")
+            np.savetxt(f, T.flatten(), fmt='%.10e', delimiter=',')
 
-    # Option A: As dense matrix (only for small matrices like 165x165)
-    with open('global_stiffness.txt', 'w') as f:
-        f.write(f"Global Stiffness Matrix: shape {stiffness.shape}\n")
-        np.savetxt(f, stiffness.toarray(), fmt='%.10e', delimiter=',')
+        # Option A: As dense matrix (only for small matrices like 165x165)
+        with open(f'{fem_solver.write_file_name} global stiffness.txt', 'w') as f:
+            f.write(f"Global Stiffness Matrix: shape {stiffness.shape}\n")
+            np.savetxt(f, stiffness.toarray(), fmt='%.10e', delimiter=',')
 
-    # Option B: As sparse triplets (I, J, V) - better for large matrices
-    #with open('global_stiffness_sparse.txt', 'w') as f:
-    #    coo = stiffness.tocoo()
-    #    f.write("Row, Col, Value\n")
-    #    for i, j, v in zip(coo.row, coo.col, coo.data):
-    #        f.write(f"{i}, {j}, {v:.10e}\n")
+        # Option B: As sparse triplets (I, J, V) - better for large matrices
+        #with open('global_stiffness_sparse.txt', 'w') as f:
+        #    coo = stiffness.tocoo()
+        #    f.write("Row, Col, Value\n")
+        #    for i, j, v in zip(coo.row, coo.col, coo.data):
+        #        f.write(f"{i}, {j}, {v:.10e}\n")
 
-    # GOALS: exporting 12x12 for all nodes in element or
-    # 3x3 sub-matrix for each 2-node combination
+        # GOALS: exporting 12x12 for all nodes in element or
+        # 3x3 sub-matrix for each 2-node combination
 
     return stiffness, T, F, mass
 

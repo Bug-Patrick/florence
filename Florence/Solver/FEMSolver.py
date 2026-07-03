@@ -48,6 +48,7 @@ class FEMSolver(object):
         load_factor=None,
         newton_raphson_tolerance=1.0e-6,
         newton_raphson_solution_tolerance=None,
+        break_newton_raphson_after_iteration=-1,
         maximum_iteration_for_newton_raphson=50,
         nonlinear_iterative_technique="newton_raphson",
         line_search_technique="goldstein",
@@ -66,6 +67,10 @@ class FEMSolver(object):
         memory_model="shared",
         platform="cpu",
         backend="opencl",
+        debug=False,
+        debug_description="",
+        write_equation_system=False,
+        write_file_name="",
         print_incremental_log=False,
         save_incremental_solution=False,
         incremental_solution_filename=None,
@@ -118,6 +123,7 @@ class FEMSolver(object):
         self.load_factor = load_factor
         self.newton_raphson_tolerance = newton_raphson_tolerance
         self.newton_raphson_solution_tolerance = newton_raphson_solution_tolerance
+        self.break_newton_raphson_after_iteration = break_newton_raphson_after_iteration
         self.maximum_iteration_for_newton_raphson = maximum_iteration_for_newton_raphson
         self.newton_raphson_failed_to_converge = False
         self.NRConvergence = None
@@ -148,7 +154,11 @@ class FEMSolver(object):
         self.platform = platform
         self.is_partitioned = False
         self.backend = backend
-        self.debug = False
+        self.debug = debug
+        self.debug_description = debug_description
+
+        self.write_equation_system = write_equation_system
+        self.write_file_name = write_file_name
 
         self.print_incremental_log = print_incremental_log
         self.save_incremental_solution = save_incremental_solution
@@ -191,6 +201,7 @@ class FEMSolver(object):
 
     def __save_state__(self):
         self.__initialdict__ = deepcopy(self.__dict__)
+
 
     def __reset_state__(self):
         self.__dict__.update(self.__initialdict__)
@@ -435,7 +446,6 @@ class FEMSolver(object):
         return function_spaces, solver
 
 
-
     def __makeoutput__(self, mesh, TotalDisp, formulation=None, function_spaces=None, material=None):
 
         post_process = PostProcess(formulation.ndim,formulation.nvar)
@@ -503,7 +513,7 @@ class FEMSolver(object):
                     solver = "LinearElasticity"
             else:
                 solver = self.nonlinear_iterative_technique
-        print(solver)
+        print("Chosen FEM Solver: "+solver)
         return solver
 
     @property
@@ -511,8 +521,9 @@ class FEMSolver(object):
         solvers = ["LinearElasticity","IncrementalLinearElasticitySolver",
             "NewtonRaphson","QuasiNewtonRaphson","NewtonRaphsonArchLength",
             "StructuralDynamicIntegrator", "ExplicitStructuralDynamicIntegrator"]
-        print(solvers)
+        print("Available FEM Solvers: "+solvers)
         return solvers
+
 
 
     def Solve(self, formulation=None, mesh=None,
@@ -595,13 +606,13 @@ class FEMSolver(object):
                 boundary_condition.ConvertStaticsToDynamics(mesh, self.number_of_load_increments)
 
 
-        # INITIATE DATA FOR THE ANALYSIS
+        # INITIATE DATA FOR THE ANALYSIS // Print this data?
         NodalForces, Residual = np.zeros((mesh.points.shape[0]*formulation.nvar,1),dtype=np.float64), \
             np.zeros((mesh.points.shape[0]*formulation.nvar,1),dtype=np.float64)
         # SET NON-LINEAR PARAMETERS
         self.NRConvergence = { 'Increment_'+str(Increment) : [] for Increment in range(self.number_of_load_increments) }
 
-        # ALLOCATE FOR SOLUTION FIELDS
+        # ALLOCATE FOR SOLUTION FIELDS // Print this data?
         if self.save_frequency == 1:
             TotalDisp = np.zeros((mesh.points.shape[0],formulation.nvar,self.number_of_load_increments),dtype=np.float64)
         else:
@@ -641,39 +652,42 @@ class FEMSolver(object):
             K, TractionForces, _, _ = Assemble(self, function_spaces[0], formulation, mesh, material,
                 Eulerx, Eulerp)
 
-            print(f"\n=== DEBUG: Pre-processing ===")
-            print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
-            print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
-            # print(f"  norm(K): {la.norm(K):.6e}") # Error
+            if self.debug:
+                print(f"\n=== DEBUG: Pre-processing ===")
+                print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
+                print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
+                # print(f"  norm(K): {la.norm(K):.6e}") # Error
 
-            print_reduced_system = True
+                print_reduced_system = True
 
-            # Save NOT or reduced matrix: extra DoF from Dirichlet boundary conditions: 165 instead of 150 DoF in reduced system
-            if not print_reduced_system:
-                np.savetxt(f'florence It0 TractionForces.csv', TractionForces.flatten(),
-                        fmt='%.10e', delimiter=',',
-                        header=f'f_int (TractionForces) assembled at Iter 0')
+                # Save NOT or reduced matrix: extra DoF from Dirichlet boundary conditions: 165 instead of 150 DoF in reduced system
+                if not print_reduced_system:
+                    np.savetxt(f'{self.write_file_name} It0 TractionForces.csv', TractionForces.flatten(),
+                            fmt='%.10e', delimiter=',',
+                            header=f'f_int (TractionForces) assembled at Iter 0')
 
-                if sp.sparse.issparse(K):
-                    np.savetxt(f'florence It0 K.csv', K.toarray(),
-                                fmt='%.10e', delimiter=',',
-                                header=f'Reduced K that would be used in Iter 0')
+                    if sp.sparse.issparse(K):
+                        np.savetxt(f'{self.write_file_name} It0 K.csv', K.toarray(),
+                                    fmt='%.10e', delimiter=',',
+                                    header=f'Reduced K used in Iter 0')
+                    else:
+                        np.savetxt(f'{self.write_file_name} It0 K.csv', K,
+                                    fmt='%.10e', delimiter=',',
+                                    header=f'Reduced K used in Iter 0')
                 else:
-                    np.savetxt(f'florence It0 K.csv', K,
-                                fmt='%.10e', delimiter=',')
-            else:
-                K_b, F_b = boundary_condition.GetReducedMatrices(K, Residual)[:2]
-                np.savetxt(f'florence It0 Force_RHS.csv', (-F_b).flatten(),
-                        fmt='%.10e', delimiter=',',
-                        header=f'RHS (-F_b) that would be solved in Iter 0')
+                    K_b, F_b = boundary_condition.GetReducedMatrices(K, Residual)[:2]
+                    np.savetxt(f'{self.write_file_name} It0 Force.csv', (-F_b).flatten(),
+                            fmt='%.10e', delimiter=',',
+                            header=f'RHS (-F_b) solved in Iter 0')
 
-                if sp.sparse.issparse(K):
-                    np.savetxt(f'florence It0 K_reduced.csv', K_b.toarray(),
-                                fmt='%.10e', delimiter=',',
-                                header=f'Reduced K that would be used in Iter 0')
-                else:
-                    np.savetxt(f'florence It0 K_reduced.csv', K_b,
-                                fmt='%.10e', delimiter=',')
+                    if sp.sparse.issparse(K):
+                        np.savetxt(f'{self.write_file_name} It0 K.csv', K_b.toarray(),
+                                    fmt='%.10e', delimiter=',',
+                                    header=f'Reduced K used in Iter 0')
+                    else:
+                        np.savetxt(f'{self.write_file_name} It0 K.csv', K_b,
+                                    fmt='%.10e', delimiter=',',
+                                    header=f'Reduced K used in Iter 0')
             
         else:
             if self.reduce_quadrature_for_quads_hexes:
@@ -747,6 +761,7 @@ class FEMSolver(object):
             sys.stdout = sys.__stdout__
 
         return self.__makeoutput__(mesh, TotalDisp, formulation, function_spaces, material)
+
 
 
     def IncrementalLinearElasticitySolver(self, function_spaces, formulation, omesh, material,
@@ -873,7 +888,6 @@ class FEMSolver(object):
         return TotalDisp
 
 
-
     def StaticSolver(self, function_spaces, formulation, solver, K,
             NeumannForces, NodalForces, Residual,
             mesh, TotalDisp, Eulerx, Eulerp, material, boundary_condition):
@@ -883,7 +897,8 @@ class FEMSolver(object):
         AppliedDirichletInc = np.zeros(boundary_condition.applied_dirichlet.shape[0],dtype=np.float64)
 
         for Increment in range(LoadIncrement):
-
+            if self.print_incremental_log:
+                print("Increment {} of {}".format(Increment, LoadIncrement))
             self.current_increment = Increment
             # CHECK ADAPTIVE LOAD FACTOR
             if self.load_factor is not None:
@@ -912,6 +927,8 @@ class FEMSolver(object):
 
             self.norm_residual = np.linalg.norm(Residual)/self.NormForces
 
+            if self.debug:
+                print("Calling nonlinear iterative technique " + self.nonlinear_iterative_technique)
             if self.nonlinear_iterative_technique == "newton_raphson":
                 Eulerx, Eulerp, K, Residual = self.NewtonRaphson(function_spaces, formulation, solver,
                     Increment, K, NodalForces, Residual, mesh, Eulerx, Eulerp,
@@ -986,6 +1003,23 @@ class FEMSolver(object):
             # GET THE REDUCED SYSTEM OF EQUATIONS
             K_b, F_b = boundary_condition.GetReducedMatrices(K,Residual)[:2]
 
+            if self.write_equation_system:
+                print("Writing K [u] = F from reduced (B.C. are incorporated) equation system.")
+                np.savetxt(f'{self.write_file_name} It{Iter} Force.csv', (-F_b).flatten(),
+                        fmt='%.10e', delimiter=',',
+                        header=f'RHS (-F_b) that would be solved in Iter {Iter+1}')
+                    
+                if sp.sparse.issparse(K_b):
+                    np.savetxt(f'{self.write_file_name} It{Iter} K.csv', K_b.toarray(),
+                            fmt='%.10e', delimiter=',',
+                            header=f'Reduced K that would be used in Iter {Iter}')
+                else:
+                    np.savetxt(f'{self.write_file_name} It{Iter+1} K.csv', K_b,
+                            fmt='%.10e', delimiter=',',
+                            header=f'Reduced K that would be used in Iter {Iter}')
+
+            if self.debug:
+                print("Linear Solver {} called from Newton Raphson".format(solver.WhichLinearSolver))
             # SOLVE THE SYSTEM
             sol = solver.Solve(K_b,-F_b)
 
@@ -1029,8 +1063,15 @@ class FEMSolver(object):
                 " Residual (abs) {0:>16.7g}".format(self.abs_norm_residual),
                 "\t Residual (rel) {0:>16.7g}".format(self.norm_residual))
 
+            if self.debug:
+                #print(f"\n=== DEBUG: Increment {Increment}, Iter {Iter} ===")
+                print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
+                print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
+                print(f"  norm(dU): {la.norm(dU):.6e}")
+
             # BREAK BASED ON RELATIVE NORM
             if np.abs(self.abs_norm_residual) < Tolerance:
+                print("Incremental solution within tolerance i.e. norm(r): {} with tolerance {}".format(self.abs_norm_residual, Tolerance))
                 break
 
             # BREAK BASED ON INCREMENTAL SOLUTION - KEEP IT AFTER UPDATE
@@ -1038,45 +1079,39 @@ class FEMSolver(object):
                 if norm(dU) <=  self.newton_raphson_solution_tolerance:
                     print("Incremental solution within tolerance i.e. norm(dU): {}".format(norm(dU)))
                     break
-            
-            debug_stop_after_iter = 0  # <--- HIER EINSTELLEN: nach welcher Iteration abbrechen
 
-            if Iter == debug_stop_after_iter:
-                # Export aktueller Zustand
-                print(f"\n=== DEBUG: Increment {Increment}, Iter {Iter} ===")
-                print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
-                print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
-                print(f"  norm(dU): {la.norm(dU):.6e}")
+            if self.break_newton_raphson_after_iteration != -1 and self.break_newton_raphson_after_iteration is not None:
+                if self.break_newton_raphson_after_iteration == Iter:
+                    # Gleichungssystem der NÄCHSTEN Iteration exportieren (vor dem Solve)
+                    if self.debug:
+                        np.savetxt(f'{self.write_file_name} It{Iter} Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
+                                header=f'Eulerx after Iter {Iter} update, before Iter {Iter+1} solve')
+                        np.savetxt(f'{self.write_file_name} It{Iter} TractionForces.csv', TractionForces.flatten(),
+                                fmt='%.10e', delimiter=',',
+                                header=f'f_int (TractionForces) assembled at Iter {Iter+1}')
 
-                # Gleichungssystem der NÄCHSTEN Iteration exportieren (vor dem Solve)
-                np.savetxt(f'florence It{Iter} Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
-                        header=f'Eulerx after Iter {Iter} update, before Iter {Iter+1} solve')
-                np.savetxt(f'florence It{Iter} TractionForces---.csv', TractionForces.flatten(),
-                        fmt='%.10e', delimiter=',',
-                        header=f'f_int (TractionForces) assembled at Iter {Iter+1}')
+                        # Exportiere das Gleichungssystem, das in Iter+1 gelöst werden WÜRDE
+                        K_b, F_b = boundary_condition.GetReducedMatrices(K, Residual)[:2]
 
-                # Exportiere das Gleichungssystem, das in Iter+1 gelöst werden WÜRDE
-                K_b, F_b = boundary_condition.GetReducedMatrices(K, Residual)[:2]
+                        np.savetxt(f'{self.write_file_name} It{Iter+1} Force_RHS.csv', (-F_b).flatten(),
+                                fmt='%.10e', delimiter=',',
+                                header=f'RHS (-F_b) that would be solved in Iter {Iter+1}')
+                        
+                        if sp.sparse.issparse(K_b):
+                            np.savetxt(f'{self.write_file_name} It{Iter+1} K_reduced.csv', K_b.toarray(),
+                                    fmt='%.10e', delimiter=',',
+                                    header=f'Reduced K that would be used in Iter {Iter+1}')
+                        else:
+                            np.savetxt(f'{self.write_file_name} It{Iter+1} K_reduced.csv', K_b,
+                                    fmt='%.10e', delimiter=',',
+                                    header=f'Reduced K that would be used in Iter {Iter+1}')
 
-                np.savetxt(f'florence It{Iter+1} Force_RHS.csv', (-F_b).flatten(),
-                           fmt='%.10e', delimiter=',',
-                           header=f'RHS (-F_b) that would be solved in Iter {Iter+1}')
-                # Optional: Stiffness
-                if sp.sparse.issparse(K_b):
-                    np.savetxt(f'florence It{Iter+1} K_reduced.csv', K_b.toarray(),
-                               fmt='%.10e', delimiter=',',
-                               header=f'Reduced K that would be used in Iter {Iter+1}')
-                else:
-                    np.savetxt(f'florence It{Iter+1} K_reduced.csv', K_b,
-                               fmt='%.10e', delimiter=',')
-
-                print(f"\n  >>> DEBUG STOP: Abbruch nach Iteration {Iter}.")
-                print(f"  >>> Gleichungssystem für Iter {Iter+1} exportiert.")
-                print(f"  >>> Dateien: debug_NR_*.csv")
-                raise SystemExit(f"Controlled debug stop after NR iteration {Iter}")
-                # different implementation option:
-                #self.newton_raphson_failed_to_converge = True
-                #break
+                    print(f"\n  >>> DEBUG STOP: Abbruch nach Iteration {Iter}.")
+                    print(f"  >>> Gleichungssystem für Iter {Iter+1} exportiert.")
+                    raise SystemExit(f"Controlled debug stop after NR iteration {Iter}")
+                    # different implementation option:
+                    #self.newton_raphson_failed_to_converge = True
+                    #break
 
             # UPDATE ITERATION NUMBER
             Iter +=1
@@ -1088,10 +1123,12 @@ class FEMSolver(object):
                 break
 
             if Iter==self.maximum_iteration_for_newton_raphson:
+                warn("\n\nNewton Raphson did not converge! Maximum number of iterations reached.")
                 self.newton_raphson_failed_to_converge = True
                 break
 
             if np.isnan(self.norm_residual) or self.norm_residual>1e06:
+                warn("\n\nNewton Raphson did not converge! Residual norm is NaN or greater 1e06.")
                 self.newton_raphson_failed_to_converge = True
                 break
 
@@ -1100,24 +1137,24 @@ class FEMSolver(object):
                 self.iterative_norm_history.append(self.norm_residual)
                 if Iter >= 6:
                     if np.mean(self.iterative_norm_history) < 1. and self.abs_norm_residual < 0.001:
+                        warn("\n\nNewton Raphson stagnation check! Residual norm mediocre small.")
                         break
 
             # USER DEFINED CRITERIA TO BREAK OUT OF NEWTON-RAPHSON
             if self.user_defined_break_func != None:
                 if self.user_defined_break_func(Increment,Iter,self.norm_residual,self.abs_norm_residual, Tolerance):
+                    warn("\n\nNewton Raphson user defined break function triggered.")
                     break
 
             # USER DEFINED CRITERIA TO STOP NEWTON-RAPHSON AND THE WHOLE ANALYSIS
             if self.user_defined_stop_func != None:
                 if self.user_defined_stop_func(Increment,Iter,self.norm_residual,self.abs_norm_residual, Tolerance):
                     self.newton_raphson_failed_to_converge = True
+                    warn("\n\nNewton Raphson user defined stop function triggered.")
                     break
 
 
         return Eulerx, Eulerp, K, Residual
-
-
-
 
 
     def QuasiNewtonRaphson(self, function_spaces, formulation, solver,
@@ -1142,7 +1179,7 @@ class FEMSolver(object):
 
         # ASSEMBLE STIFFNESS PER TIME STEP
         K, TractionForces = Assemble(self, function_spaces[0], formulation, mesh, material,
-            Eulerx,Eulerp)[:2]
+            Eulerx,Eulerp, 0)[:2]
 
         while self.norm_residual > Tolerance or Iter==0:
             # GET THE REDUCED SYSTEM OF EQUATIONS
@@ -1167,7 +1204,7 @@ class FEMSolver(object):
             # RE-ASSEMBLE - COMPUTE STIFFNESS AND INTERNAL TRACTION FORCES
             if Iter % 5 == 0:
                 K, TractionForces = Assemble(self, function_spaces[0], formulation, mesh, material,
-                    Eulerx,Eulerp)[:2]
+                    Eulerx,Eulerp, Iter)[:2]
             else:
                 TractionForces = AssembleInternalTractionForces(self, function_spaces[0], formulation, mesh, material,
                     Eulerx,Eulerp)
@@ -1238,8 +1275,6 @@ class FEMSolver(object):
                     break
 
         return Eulerx, Eulerp, K, Residual
-
-
 
 
     def LBFGS(self, function_spaces, formulation, solver,
@@ -1367,8 +1402,6 @@ class FEMSolver(object):
                     break
 
         return Eulerx, Eulerp, K, Residual
-
-
 
 
     def LineSearch(self, function_space, formulation, mesh, material,
@@ -1625,7 +1658,6 @@ class FEMSolver(object):
 
 
 
-
     def LinearModelAnalysis(self, fspace, formulation, mesh, material, boundary_condition,  Eulerx, Eulerp, Residual):
 
         number_of_modes = 3
@@ -1695,7 +1727,7 @@ class FEMSolver(object):
                 if filename is not None:
                     if ".mat" in filename:
                         filename = filename.split(".")[0]
-                    savemat(filename+"_"+str(Increment),
+                    savemat(filename+"_"+str(Increment)+".mat",
                         {'solution':TotalDisp[:,:,Increment]},do_compression=True)
                 else:
                     raise ValueError("No file name provided to save incremental solution")
