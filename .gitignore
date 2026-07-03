@@ -72,3 +72,6 @@ dummy.*
 
 # folders
 venv/
+tests/*.csv
+tests/*.msh
+tests/*.gmsh

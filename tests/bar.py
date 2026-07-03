@@ -40,16 +40,24 @@ def bar_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
     # set up solver
     # careful to not enable low-level dispatcher: if(has_low_level_dispatcher != optimise): has_low_level_dispatcher = True
     fem_solver = FEMSolver(
+        # === Basic setup ===
         number_of_load_increments=increment_step,
         analysis_type="static",
-        # analysis_subtype="explicit", # Explicit or implicit??
+        # analysis_subtype="explicit", # Explicit or implicit?? for dynamics?
         analysis_nature="nonlinear",
+        # === Research code setup ===
+        stabilise_local_system=stabilise, # stabilise using analytic eigensystem
+        #stabilise_global_system # stabilise using eigenvalue decomposition?
+        # === Code optimisation ===
         # optimise=True, # has_low_level_dispatcher=False, # True-False is bad combination: RuntimeError: Cannot dispatch to low level module since material NeoHookeanF does not support it
-        memory_store_frequency=20,
+        # === Debugging prints ===
         print_incremental_log=True,
         save_incremental_solution=True,
-        incremental_solution_filename="filename",
-        stabilise_local_system=stabilise#, # stabilise using analytic eigensystem
+        incremental_solution_filename="florence Tet Sol Incr",
+        incremental_solution_save_frequency=1,
+        break_at_increment=-1,
+        memory_store_frequency=1#,
+        # === Nonlinear solver advanced settings ===
         #activate_line_search
         #activate_arc_length
         #newton_raphson_tolerance
@@ -57,7 +65,6 @@ def bar_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
         #maximum_iteration_for_newton_raphson
         #nonlinear_iterative_technique
         #line_search_technique
-        #stabilise_global_system # stabilise using eigenvalue decomposition?
         )
     
     return mesh, boundary_condition, fem_solver
