@@ -14,13 +14,14 @@ def tet_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
     mesh.ReadGmsh(os.path.join(PWD(__file__), "tet.gmsh"), element_type="tet")
     mesh.ndim = mesh.InferSpatialDimension()
 
+    # print(mesh.points)
 
     def DirichletFunc(mesh):
         # homogenous Dirichlet boundary at nodes 0 1 2 - nan values as free boundary
         boundary_data = np.zeros((mesh.nnode, 3)) + np.nan
-        print(mesh.points)
-        # at nodes 0:2 al DoF : are fixed
-        boundary_data[0:2, :] = (0., 0., 0.)
+        
+        # at nodes 0:2 all DoF: are fixed
+        boundary_data[0:3, :] = (0., 0., 0.)
         return boundary_data
 
     def NeumannFuncDyn(mesh):

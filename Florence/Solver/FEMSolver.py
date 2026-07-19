@@ -1027,6 +1027,12 @@ class FEMSolver(object):
             dU = boundary_condition.UpdateFreeDoFs(sol,K.shape[0],formulation.nvar)
             # self.sol += dU
 
+            if self.debug:
+                np.savetxt(f'{self.write_file_name} It{Iter} sol.csv', sol, fmt='%.10e', delimiter=',',
+                                header=f'Solution after Iter {Iter}')
+                np.savetxt(f'{self.write_file_name} It{Iter} dU.csv', dU, fmt='%.10e', delimiter=',', # custom function: boundary_condition.GetReducedDisplacement(dU)
+                                header=f'dU after Iter {Iter}')
+
             # COMPUTE STEP SIZE
             if self.activate_line_search:
                 alpha = self.LineSearch(function_spaces[0], formulation, mesh, material, boundary_condition,
@@ -1070,9 +1076,14 @@ class FEMSolver(object):
                 print(f"  norm(dU): {la.norm(dU):.6e}")
 
             # BREAK BASED ON RELATIVE NORM
+            if np.abs(self.norm_residual) < Tolerance:
+                print("Incremental solution within tolerance i.e. norm(r): {} with tolerance {}".format(self.norm_residual, Tolerance))
+                break
+
+            # BREAK BASED ON ABSOLUTE NORM (what Poya implemented, but dubbed as relative norm)
             if np.abs(self.abs_norm_residual) < Tolerance:
                 print("Incremental solution within tolerance i.e. norm(r): {} with tolerance {}".format(self.abs_norm_residual, Tolerance))
-                break
+                break;
 
             # BREAK BASED ON INCREMENTAL SOLUTION - KEEP IT AFTER UPDATE
             if Iter > 0:

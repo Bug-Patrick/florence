@@ -23,7 +23,7 @@ def bar_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
         return boundary_data
 
     def NeumannFuncDyn(mesh):
-        # Neumann boundary with -100 force in x or y direction at element 44 - nan values as free boundary
+        # Neumann boundary with -100 force in y direction at element 44 - nan values as free boundary
         boundary_data = np.zeros((mesh.points.shape[0], 3)) + np.nan
 
         # at right (X=0, Y=Z=0.5) a x-direction force of -100
@@ -45,6 +45,8 @@ def bar_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
         analysis_type="static",
         # analysis_subtype="explicit", # Explicit or implicit?? for dynamics?
         analysis_nature="nonlinear",
+        # is_geometrically_linearised=False, # most material nonlinear should also geometrically nonlinear
+        # requires_geometry_update=False, # update stress and traction per iteration; for nonlinear default = True
         # === Research code setup ===
         stabilise_local_system=stabilise, # stabilise using analytic eigensystem
         #stabilise_global_system # stabilise using eigenvalue decomposition?
@@ -60,7 +62,7 @@ def bar_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
         save_incremental_solution=True,
         incremental_solution_filename=problem_description+" Sol Incr",
         incremental_solution_save_frequency=1,
-        break_at_increment=0,
+        break_at_increment=-1,
         memory_store_frequency=1#,
         # === Nonlinear solver advanced settings ===
         #activate_line_search

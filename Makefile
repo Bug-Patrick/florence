@@ -24,6 +24,7 @@ help:
 	@echo '	check_install		first time cython execution'
 	@echo '	run			recurring cython execution'
 	@echo '	env			Provide Florence in PythonPath, Usage: eval $$(make env)'
+	@echo ' 				source venv/bin/activate && eval $$(make env) && cd tests/'
 
 apt_refresh:
 	sudo apt update --fix-missing

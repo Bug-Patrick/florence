@@ -544,6 +544,9 @@ def FillConstitutiveBF(B,SpatialGradient,ndim,nvar):
         B[2::ndim,2] = SpatialGradient[0,:]
         B[2::ndim,5] = SpatialGradient[1,:]
         B[2::ndim,8] = SpatialGradient[2,:]
+        #print("B is \n")
+        #print(B)
+        #raise SystemExit(f"Controlled debug stop")
 
 
 
@@ -2536,9 +2539,9 @@ class MooneyRivlinF(Material):
             #print("sigmaJ= "+str(sigmaJ))
 
             # Constitutive
-            hessian = 2. * mu1 * I
-            hessian += 2. * mu2 * fxIxf
-            hessian += WJJ * np.outer(h, h)
+            hessian1 = 2. * mu1 * I
+            hessian2 = 2. * mu2 * fxIxf
+            hessian3 = WJJ * np.outer(h, h)
 
             # Initial stiffness component
             # initial_stiffness = d2JdFdF(sigmaH + sigmaJ * F)
@@ -2548,7 +2551,10 @@ class MooneyRivlinF(Material):
                 eps=self.tangent_stabiliser_value
                 )
             #print("Initial stiffness="+str(initial_stiffness))
-            hessian += initial_stiffness
+            #hessian += initial_stiffness
+
+            hessian = hessian1 + hessian2 + hessian3 + initial_stiffness
+            debug_hessian_components = True
 
             if self.debug:
                 if elem == 0:
@@ -2558,6 +2564,21 @@ class MooneyRivlinF(Material):
                 # self._stiff_file.write(f"Nodes: {mesh.elements[elem,:]}\n")
                 np.savetxt(self._stiff_file, hessian, fmt='%.10e', delimiter=',')
                 self._stiff_file.write("\n")
+                
+                if debug_hessian_components:
+                    self._stiff_file.write(f"Element {elem} Tikhonov Matrix: shape {hessian1.shape}\n")
+                    np.savetxt(self._stiff_file, hessian1, fmt='%.10e', delimiter=',')
+                    self._stiff_file.write("\n")
+                    self._stiff_file.write(f"Element {elem} Mu Matrix: shape {hessian2.shape}\n")
+                    np.savetxt(self._stiff_file, hessian2, fmt='%.10e', delimiter=',')
+                    self._stiff_file.write("\n")
+                    self._stiff_file.write(f"Element {elem} Volume Gradient Matrix: shape {hessian3.shape}\n")
+                    np.savetxt(self._stiff_file, hessian3, fmt='%.10e', delimiter=',')
+                    self._stiff_file.write("\n")
+                    self._stiff_file.write(f"Element {elem} Volume Hessian Matrix: shape {initial_stiffness.shape}\n")
+                    np.savetxt(self._stiff_file, initial_stiffness, fmt='%.10e', delimiter=',')
+                    self._stiff_file.write("\n")
+                self._stiff_file.flush()
 
         elif ndim == 2:
 
@@ -2617,11 +2638,11 @@ class MooneyRivlinF(Material):
 
         if self.debug:
             if elem == 0:
-                fh = open(f'{self.debug_file_name} element_PK1stress.txt', 'w')
+                fh = open(f'{self.debug_file_name} element PK1stress.txt', 'w')
                 fh.write(f"# Element 1.Piola-Kirchhoff stress tensor (P)\n")
                 fh.write(f"# Format: DOF order is [P_xx, P_xy, P_xz, P_xy, ...]\n\n")
             else:
-                fh = open(f'{self.debug_file_name} element_PK1stress.txt', 'a')
+                fh = open(f'{self.debug_file_name} element PK1stress.txt', 'a')
             
             fh.write(f"# Element {elem}\n")
             np.savetxt(fh, P.flatten().reshape(1,-1), fmt='%+.10e', delimiter=', ')
@@ -2752,7 +2773,7 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
             # np.savetxt('stiffness_elem'+str(elem)+'.txt', stiffnessel, delimiter=',', header='stiffness', comments='')
             
             if elem == 0:
-                self._stiff_file = open(f'{self.debug_file_name} stiffness_elements.txt', 'w')
+                self._stiff_file = open(f'{self.debug_file_name} stiffness elements.txt', 'w')
 
             self._stiff_file.write(f"Element {elem}\n")
             self._stiff_file.write(f"Nodes: {mesh.elements[elem,:]}\n")
@@ -2777,7 +2798,6 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
             I_mass_elem, J_mass_elem, V_mass_elem = self.FindIndices(massel)
 
         return I_stiff_elem, J_stiff_elem, V_stiff_elem, t, f, I_mass_elem, J_mass_elem, V_mass_elem
-
 
 
     def GetElementalMatricesInVectorForm(self, elem, function_space, mesh, material, fem_solver, Eulerx, TotalPot):
@@ -2813,7 +2833,6 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
 
         return t, f, massel
-
 
 
     def GetLocalStiffness(self, function_space, material, LagrangeElemCoords, EulerElemCoords, fem_solver, elem=0):
@@ -2858,6 +2877,21 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
             # EXPORT THE HESSIAN 9x9
 
+             
+            with open("element shape functions.txt", "a") as f:
+                f.write(f"=== Element {elem} shape functions (Bases) ===\n")
+                f.write(np.array2string(function_space.Bases, precision=6) + "\n")
+
+                f.write("=== Parent-space derivatives dN/dxi (Jm) ===\n")
+                f.write(np.array2string(function_space.Jm, precision=6) + "\n")
+
+                # ---- Physical-space derivatives (element 0 specific) ----
+                f.write("=== Material gradient  grad_0(N) (per Gauss point) ===\n")
+                f.write(np.array2string(MaterialGradient, precision=6) + "\n")
+
+                f.write("=== Spatial gradient  grad(N) (per Gauss point) ===\n")
+                f.write(np.array2string(SpatialGradient, precision=6) + "\n")
+
             # COMPUTE CAUCHY STRESS TENSOR
             CauchyStressTensor = []
             if fem_solver.requires_geometry_update:
@@ -2865,7 +2899,7 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
             # COMPUTE THE TANGENT STIFFNESS MATRIX
             BDB_1, t = self.ConstitutiveStiffnessIntegrand(B, SpatialGradient[counter,:,:],
-                CauchyStressTensor, H_Voigt, requires_geometry_update=fem_solver.requires_geometry_update)
+                CauchyStressTensor, H_Voigt, requires_geometry_update=fem_solver.requires_geometry_update, print=not elem)
 
             # INTEGRATE TRACTION FORCE
             if fem_solver.requires_geometry_update:
@@ -2883,12 +2917,12 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
 
     def ConstitutiveStiffnessIntegrand(self, B, SpatialGradient, CauchyStressTensor, H_Voigt,
-        requires_geometry_update=True):
+        requires_geometry_update=True, print=False):
         """Applies to displacement based formulation"""
 
         SpatialGradient = SpatialGradient.T.copy()
         FillConstitutiveBF(B,SpatialGradient,self.ndim,self.nvar)
-
+        
         BDB = B.dot(H_Voigt.dot(B.T))
 
         t=np.zeros((B.shape[0],1))

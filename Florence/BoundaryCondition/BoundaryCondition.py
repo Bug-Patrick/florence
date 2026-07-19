@@ -903,6 +903,9 @@ class BoundaryCondition(object):
 
         return F_b, mass_b
 
+    def GetReducedDisplacement(self, u):
+        return u.reshape(-1)[self.columns_in].reshape(-1,3)
+
 
 
     def UpdateFixDoFs(self, AppliedDirichletInc, fsize, nvar):
