@@ -75,3 +75,5 @@ venv/
 tests/*.csv
 tests/*.msh
 tests/*.gmsh
+tests/*.csv
+tests/*/*.csv

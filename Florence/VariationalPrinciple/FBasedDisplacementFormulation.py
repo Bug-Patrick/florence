@@ -2554,7 +2554,7 @@ class MooneyRivlinF(Material):
             #hessian += initial_stiffness
 
             hessian = hessian1 + hessian2 + hessian3 + initial_stiffness
-            debug_hessian_components = True
+            debug_hessian_components = False
 
             if self.debug:
                 if elem == 0:
@@ -2877,20 +2877,28 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
             # EXPORT THE HESSIAN 9x9
 
-             
-            with open("element shape functions.txt", "a") as f:
-                f.write(f"=== Element {elem} shape functions (Bases) ===\n")
-                f.write(np.array2string(function_space.Bases, precision=6) + "\n")
-
-                f.write("=== Parent-space derivatives dN/dxi (Jm) ===\n")
-                f.write(np.array2string(function_space.Jm, precision=6) + "\n")
+            # EXPORT THE SHAPE FUNCTIONS + DERIVATIVES
+            if self.debug:
+                if elem == 0:
+                    self._shape_file = open(f'{self.debug_file_name} element shape functions.txt', 'w')
+                
+                self._shape_file.write(f"=== Element {elem} shape functions (Bases) ===\n")
+                self._shape_file.write(np.array2string(function_space.Bases, precision=6) + "\n")
+                
+                self._shape_file.write("=== Parent-space derivatives dN/dxi (Jm) ===\n")
+                self._shape_file.write(np.array2string(function_space.Jm, precision=6) + "\n")
 
                 # ---- Physical-space derivatives (element 0 specific) ----
-                f.write("=== Material gradient  grad_0(N) (per Gauss point) ===\n")
-                f.write(np.array2string(MaterialGradient, precision=6) + "\n")
+                self._shape_file.write("=== Material gradient  grad_0(N) (per Gauss point) ===\n")
+                self._shape_file.write(np.array2string(MaterialGradient, precision=6) + "\n")
 
-                f.write("=== Spatial gradient  grad(N) (per Gauss point) ===\n")
-                f.write(np.array2string(SpatialGradient, precision=6) + "\n")
+                self._shape_file.write("=== Spatial gradient  grad(N) (per Gauss point) ===\n")
+                self._shape_file.write(np.array2string(SpatialGradient, precision=6) + "\n")
+
+                # np.savetxt(self._shape_file, stiffnessel, fmt='%.10e', delimiter=',')
+
+                #if elem == nelem - 1:
+                #    self._shape_file.close()
 
             # COMPUTE CAUCHY STRESS TENSOR
             CauchyStressTensor = []

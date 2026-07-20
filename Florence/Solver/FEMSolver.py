@@ -714,6 +714,40 @@ class FEMSolver(object):
         else:
             print('Finished the assembly stage. Time elapsed was', time()-tAssembly, 'seconds')
 
+        break_before_newton_raphson = True
+
+        if break_before_newton_raphson:
+            # Gleichungssystem der NÄCHSTEN Iteration exportieren (vor dem Solve)
+            if self.debug:
+                np.savetxt(f'{self.write_file_name} It-1 Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
+                        header=f'Eulerx before Iter 0 update, before Iter 0 solve')
+                np.savetxt(f'{self.write_file_name} It-1 TractionForces.csv', TractionForces.flatten(),
+                        fmt='%.10e', delimiter=',',
+                        header=f'f_int (TractionForces) assembled at Iter 0')
+
+                # Exportiere das Gleichungssystem, das in Iter+1 gelöst werden WÜRDE
+                K_b, F_b = boundary_condition.GetReducedMatrices(K, Residual)[:2]
+
+                np.savetxt(f'{self.write_file_name} It0 Force_RHS.csv', (-F_b).flatten(),
+                        fmt='%.10e', delimiter=',',
+                        header=f'RHS (-F_b) that would be solved in Iter 0')
+                
+                if sp.sparse.issparse(K_b):
+                    np.savetxt(f'{self.write_file_name} It0 K_reduced.csv', K_b.toarray(),
+                            fmt='%.10e', delimiter=',',
+                            header=f'Reduced K that would be used in Iter 0')
+                else:
+                    np.savetxt(f'{self.write_file_name} It0 K_reduced.csv', K_b,
+                            fmt='%.10e', delimiter=',',
+                            header=f'Reduced K that would be used in Iter 0')
+
+            print(f"\n  >>> DEBUG STOP: Abbruch vor Newton Raphson.")
+            print(f"  >>> Gleichungssystem vor NR (initial) exportiert.")
+            raise SystemExit(f"Controlled debug stop before NR")
+            # different implementation option:
+            #self.newton_raphson_failed_to_converge = True
+            #break
+
 
         if self.analysis_type == 'dynamic':
             if self.analysis_subtype != "explicit":
