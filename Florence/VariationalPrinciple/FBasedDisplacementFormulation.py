@@ -2527,17 +2527,6 @@ class MooneyRivlinF(Material):
 
             fxIxf = Get_FxIxF(F)
 
-            #print("Kinematic input: H="+str(H))
-
-            #print("Spanning 4th order Tensors")
-            #print("fxIxf "+ str(fxIxf))
-            #print("Vectorization of Covactor in outer product"+str(np.outer(h, h)))
-
-            #print("Coefficients for 4th order")
-            #print("WJJ= "+str(WJJ))
-            #print("sigmaH= "+str(sigmaH))
-            #print("sigmaJ= "+str(sigmaJ))
-
             # Constitutive
             hessian1 = 2. * mu1 * I
             hessian2 = 2. * mu2 * fxIxf
@@ -2550,35 +2539,114 @@ class MooneyRivlinF(Material):
                 # stabilise=False,
                 eps=self.tangent_stabiliser_value
                 )
-            #print("Initial stiffness="+str(initial_stiffness))
-            #hessian += initial_stiffness
 
             hessian = hessian1 + hessian2 + hessian3 + initial_stiffness
-            debug_hessian_components = False
+
+            debug_kinematics_hessian = True
+            debug_hessian_coefficients = True
+            debug_tensor_generators = True
+            debug_hessian_components = True
 
             if self.debug:
                 if elem == 0:
                     self._stiff_file = open(f'{self.debug_file_name} element hessians.txt', 'w')
 
                 self._stiff_file.write(f"Element {elem} Hessian Matrix: shape {hessian.shape}\n")
+
                 # self._stiff_file.write(f"Nodes: {mesh.elements[elem,:]}\n")
                 np.savetxt(self._stiff_file, hessian, fmt='%.10e', delimiter=',')
                 self._stiff_file.write("\n")
+
+                if debug_kinematics_hessian:
+                    if elem == 0:
+                        fk = open(f'{self.debug_file_name} element kinematics.txt', 'w')
+                        #fk.write(f"# Element Kinematic Measures and Invariants\n")
+                    else:
+                        fk = open(f'{self.debug_file_name} element kinematics.txt', 'a')
+
+                    # Invariants of the polyconvex energy W(F, H, J)
+                    # I_F = np.tensordot(F, F)          # F:F = tr(F^T F) = tr(C)
+                    # I_H = np.tensordot(H, H)          # H:H = tr(H^T H) = tr(G)
+
+                    fk.write(f"# Element {elem} | Gauss point {gcounter}\n")
+                    fk.write(f"# J = {J:+.10e}\n")
+                    fk.write(f"# F (row-major) = \n")
+                    np.savetxt(fk, F.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                    fk.write(f"# H = cof(F) (row-major) = \n") #print("Kinematic input: H="+str(H))
+                    np.savetxt(fk, H.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                    fk.write(f"\n")
+                    fk.close()
+
+                    # Include if completeness for stress and energy is needed:
+                    #fk.write(f"#   I_F (F:F) = {I_F:+.10e}\n")
+                    #fk.write(f"#   I_H (H:H) = {I_H:+.10e}\n")
                 
+                if debug_hessian_coefficients:
+                    # Coefficients in the calculation are mu1, mu2, lamb, sigmaJ, WJJ
+
+                    if elem == 0:
+                        self._stiff_hess_coeff_file = open(f'{self.debug_file_name} element hessian coefficients.txt', 'w')
+                        self._stiff_hess_coeff_file.write(f"# Order of values: mu1, mu2, lambda, sigmaJ, WJJ\n") # W_F, W_H, W_J, W_total
+                    else:
+                        self._stiff_hess_coeff_file = open(f'{self.debug_file_name} element hessian coefficients.txt', 'a')
+                    
+                    self._stiff_hess_coeff_file.write(f"# Element {elem} | Gauss point {gcounter}\n")
+
+                    # Energy contributions (for verification)
+                    # W_F = mu1 * I_F                   # mu1 * (F:F)
+                    # W_H = mu2 * I_H                   # mu2 * (H:H)
+                    # W_J = -(2.*mu1 + 4.*mu2) * np.log(J) + 0.5 * lamb * (J - 1.)**2
+
+                    self._stiff_hess_coeff_file.write(f"{mu1}, {mu2}, {lamb}, {sigmaJ:+.10e}, {WJJ:+.10e}\n")
+                    self._stiff_hess_coeff_file.write(f"\n")
+                    self._stiff_hess_coeff_file.close()
+
+                    # Include if completeness for stress and energy is needed:
+                    #self._stiff_hess_coeff_file.write(f"#   W_F = {W_F:+.10e},  W_H = {W_H:+.10e},  W_J = {W_J:+.10e}\n")
+                    #self._stiff_hess_coeff_file.write(f"#   W_total = {W_F + W_H + W_J:+.10e}\n")
+
+                if debug_tensor_generators:
+                    # 4th order tensors use: I, fxIxf, np.outer(h, h), d2JdFdF(sigmaH + sigmaJ * F) OR sigmaH, sigmaJ, F
+                    if elem == 0:
+                        self._stiff_tensor_gen_file = open(f'{self.debug_file_name} element tensor generators.txt', 'w')
+                    else:
+                        self._stiff_tensor_gen_file = open(f'{self.debug_file_name} element tensor generators.txt', 'a')
+
+                    self._stiff_tensor_gen_file.write(f"# Element {elem} | Gauss point {gcounter}\n")
+
+                    self._stiff_tensor_gen_file.write(f"# Element {elem} fxIxf Matrix: shape {fxIxf.shape}\n")
+                    np.savetxt(self._stiff_tensor_gen_file, fxIxf, fmt='%.10e', delimiter=',')
+                    self._stiff_tensor_gen_file.write(f"# Element {elem} h ox h Matrix: \n")
+                    np.savetxt(self._stiff_tensor_gen_file, np.outer(h, h), fmt='%.10e', delimiter=',')
+                    # self._stiff_tensor_gen_file.write(f"# sigmaF (row-major):\n")
+                    # np.savetxt(self._stiff_tensor_gen_file, sigmaF.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                    self._stiff_tensor_gen_file.write(f"# sigmaH (row-major):\n")
+                    np.savetxt(self._stiff_tensor_gen_file, sigmaH.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                    self._stiff_tensor_gen_file.write(f"# cross(sigmaH, F) (row-major):\n")
+                    np.savetxt(self._stiff_tensor_gen_file, cross(sigmaH, F).flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                    self._stiff_tensor_gen_file.write(f"\n")
+                    self._stiff_tensor_gen_file.write("\n")
+
                 if debug_hessian_components:
-                    self._stiff_file.write(f"Element {elem} Tikhonov Matrix: shape {hessian1.shape}\n")
-                    np.savetxt(self._stiff_file, hessian1, fmt='%.10e', delimiter=',')
-                    self._stiff_file.write("\n")
-                    self._stiff_file.write(f"Element {elem} Mu Matrix: shape {hessian2.shape}\n")
-                    np.savetxt(self._stiff_file, hessian2, fmt='%.10e', delimiter=',')
-                    self._stiff_file.write("\n")
-                    self._stiff_file.write(f"Element {elem} Volume Gradient Matrix: shape {hessian3.shape}\n")
-                    np.savetxt(self._stiff_file, hessian3, fmt='%.10e', delimiter=',')
-                    self._stiff_file.write("\n")
-                    self._stiff_file.write(f"Element {elem} Volume Hessian Matrix: shape {initial_stiffness.shape}\n")
-                    np.savetxt(self._stiff_file, initial_stiffness, fmt='%.10e', delimiter=',')
-                    self._stiff_file.write("\n")
-                self._stiff_file.flush()
+                    if elem == 0:
+                        self._stiff_comp_file = open(f'{self.debug_file_name} element hessian components.txt', 'w')
+                    else:
+                        self._stiff_comp_file = open(f'{self.debug_file_name} element hessian components.txt', 'a')
+                    
+                    self._stiff_comp_file.write(f"# Element {elem} Tikhonov Matrix: shape {hessian1.shape}\n")
+                    np.savetxt(self._stiff_comp_file, hessian1, fmt='%.10e', delimiter=',')
+                    self._stiff_comp_file.write("\n")
+                    self._stiff_comp_file.write(f"# Element {elem} Mu Matrix: shape {hessian2.shape}\n")
+                    np.savetxt(self._stiff_comp_file, hessian2, fmt='%.10e', delimiter=',')
+                    self._stiff_comp_file.write("\n")
+                    self._stiff_comp_file.write(f"# Element {elem} Volume Gradient Matrix: shape {hessian3.shape}\n")
+                    np.savetxt(self._stiff_comp_file, hessian3, fmt='%.10e', delimiter=',')
+                    self._stiff_comp_file.write("\n")
+                    self._stiff_comp_file.write(f"# Element {elem} Volume Hessian Matrix: shape {initial_stiffness.shape}\n")
+                    np.savetxt(self._stiff_comp_file, initial_stiffness, fmt='%.10e', delimiter=',')
+                    self._stiff_comp_file.write("\n")
+                    self._stiff_comp_file.flush()
+                    self._stiff_comp_file.close()
 
         elif ndim == 2:
 
@@ -2651,42 +2719,45 @@ class MooneyRivlinF(Material):
 
             #print(f'Element {elem} PK1 stress tensor {P.flatten()}\n')
 
-            if elem == 0:
-                fk = open(f'{self.debug_file_name} element kinematics.txt', 'w')
-                fk.write(f"# Element Kinematic Measures and Invariants\n")
-                fk.write(f"# mu1={mu1}, mu2={mu2}, lambda={lamb}\n\n")
-            else:
-                fk = open(f'{self.debug_file_name} element kinematics.txt', 'a')
+            debug_kinematics_stress = False
 
-            # Invariants of the polyconvex energy W(F, H, J)
-            I_F = np.tensordot(F, F)          # F:F = tr(F^T F) = tr(C)
-            I_H = np.tensordot(H, H)          # H:H = tr(H^T H) = tr(G)
+            if debug_kinematics_stress:
+                if elem == 0:
+                    fk = open(f'{self.debug_file_name} element kinematics.txt', 'w')
+                    fk.write(f"# Element Kinematic Measures and Invariants\n")
+                    fk.write(f"# mu1={mu1}, mu2={mu2}, lambda={lamb}\n\n")
+                else:
+                    fk = open(f'{self.debug_file_name} element kinematics.txt', 'a')
 
-            # Energy contributions (for verification)
-            W_F = mu1 * I_F                   # mu1 * (F:F)
-            W_H = mu2 * I_H                   # mu2 * (H:H)
-            W_J = -(2.*mu1 + 4.*mu2) * np.log(J) + 0.5 * lamb * (J - 1.)**2
+                # Invariants of the polyconvex energy W(F, H, J)
+                I_F = np.tensordot(F, F)          # F:F = tr(F^T F) = tr(C)
+                I_H = np.tensordot(H, H)          # H:H = tr(H^T H) = tr(G)
 
-            fk.write(f"# Element {elem} | Gauss point {gcounter}\n")
-            fk.write(f"#   J = {J:+.10e}\n")
-            fk.write(f"#   I_F (F:F) = {I_F:+.10e}\n")
-            fk.write(f"#   I_H (H:H) = {I_H:+.10e}\n")
-            fk.write(f"#   sigmaJ = {sigmaJ:+.10e}\n")
-            fk.write(f"#   W_F = {W_F:+.10e},  W_H = {W_H:+.10e},  W_J = {W_J:+.10e}\n")
-            fk.write(f"#   W_total = {W_F + W_H + W_J:+.10e}\n")
-            fk.write(f"# F (row-major):\n")
-            np.savetxt(fk, F.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
-            fk.write(f"# H = cof(F) (row-major):\n")
-            np.savetxt(fk, H.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
-            fk.write(f"# sigmaF (row-major):\n")
-            np.savetxt(fk, sigmaF.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
-            if ndim == 3:
-                fk.write(f"# sigmaH (row-major):\n")
-                np.savetxt(fk, sigmaH.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
-                fk.write(f"# cross(sigmaH, F) (row-major):\n")
-                np.savetxt(fk, cross(sigmaH, F).flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
-            fk.write(f"\n")
-            fk.close()
+                # Energy contributions (for verification)
+                W_F = mu1 * I_F                   # mu1 * (F:F)
+                W_H = mu2 * I_H                   # mu2 * (H:H)
+                W_J = -(2.*mu1 + 4.*mu2) * np.log(J) + 0.5 * lamb * (J - 1.)**2
+
+                fk.write(f"# Element {elem} | Gauss point {gcounter}\n")
+                fk.write(f"#   J = {J:+.10e}\n")
+                fk.write(f"#   I_F (F:F) = {I_F:+.10e}\n")
+                fk.write(f"#   I_H (H:H) = {I_H:+.10e}\n")
+                fk.write(f"#   sigmaJ = {sigmaJ:+.10e}\n")
+                fk.write(f"#   W_F = {W_F:+.10e},  W_H = {W_H:+.10e},  W_J = {W_J:+.10e}\n")
+                fk.write(f"#   W_total = {W_F + W_H + W_J:+.10e}\n")
+                fk.write(f"# F (row-major):\n")
+                np.savetxt(fk, F.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                fk.write(f"# H = cof(F) (row-major):\n")
+                np.savetxt(fk, H.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                fk.write(f"# sigmaF (row-major):\n")
+                np.savetxt(fk, sigmaF.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                if ndim == 3:
+                    fk.write(f"# sigmaH (row-major):\n")
+                    np.savetxt(fk, sigmaH.flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                    fk.write(f"# cross(sigmaH, F) (row-major):\n")
+                    np.savetxt(fk, cross(sigmaH, F).flatten().reshape(1, -1), fmt='%+.10e', delimiter=', ')
+                fk.write(f"\n")
+                fk.close()
 
         return P
 

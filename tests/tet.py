@@ -78,7 +78,7 @@ def tet_problem_setup(stabilise=False,increments=1, force_direction=1, force_mag
 
 
 
-def tet_MR(simulation_type="F", stabilise_tangents=True, problem_description="florence tet MR"):
+def tet_MR(simulation_type="F", stabilise_tangents=True, problem_description="florence tet MR/florence tet MR"):
     """An use case of solving a bar problem using
         linear elements read from a gmsh file
 

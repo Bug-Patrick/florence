@@ -125,7 +125,7 @@ def bar_NL_tests():
 
 
 
-def bar_MR(simulation_type="F", stabilise_tangents=True, problem_description="florence bar MR"):
+def bar_MR(simulation_type="F", stabilise_tangents=True, problem_description="florence bar MR/florence bar MR"): # use description with break_newton_after for easy export
     """An use case of solving a bar problem using
         linear elements read from a gmsh file
 

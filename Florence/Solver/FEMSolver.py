@@ -714,7 +714,7 @@ class FEMSolver(object):
         else:
             print('Finished the assembly stage. Time elapsed was', time()-tAssembly, 'seconds')
 
-        break_before_newton_raphson = True
+        break_before_newton_raphson = False
 
         if break_before_newton_raphson:
             # Gleichungssystem der NÄCHSTEN Iteration exportieren (vor dem Solve)
