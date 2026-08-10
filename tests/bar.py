@@ -151,7 +151,7 @@ def bar_MR(simulation_type="F", stabilise_tangents=True, problem_description="fl
         material = MooneyRivlinF(mesh.ndim, lamb=lamb, mu1=mu, mu2=mu, minJ=0.5, stabilise_tangents=stabilise_tangents, debug=True, debug_file_name=problem_description)
 
         # set up variational form
-        print("Stabilisation: "+str(stabilise_tangents))
+        print("<< Stabilisation: "+str(stabilise_tangents))
         formulation = FBasedDisplacementFormulation(mesh)
     else:
         # Set material data

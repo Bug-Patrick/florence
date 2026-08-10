@@ -654,8 +654,8 @@ class FEMSolver(object):
 
             if self.debug:
                 print(f"\n=== DEBUG: Pre-processing ===")
-                print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
-                print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
+                # print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
+                # print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
                 # print(f"  norm(K): {la.norm(K):.6e}") # Error
 
                 print_reduced_system = True
@@ -719,9 +719,10 @@ class FEMSolver(object):
         if break_before_newton_raphson:
             # Gleichungssystem der NÄCHSTEN Iteration exportieren (vor dem Solve)
             if self.debug:
-                np.savetxt(f'{self.write_file_name} It-1 Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
+                print("<< X. Print << Writing reduced system and more before interrupt csv.")
+                np.savetxt(f'{self.write_file_name} It0 Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
                         header=f'Eulerx before Iter 0 update, before Iter 0 solve')
-                np.savetxt(f'{self.write_file_name} It-1 TractionForces.csv', TractionForces.flatten(),
+                np.savetxt(f'{self.write_file_name} It0 TractionForces.csv', TractionForces.flatten(),
                         fmt='%.10e', delimiter=',',
                         header=f'f_int (TractionForces) assembled at Iter 0')
 
@@ -962,7 +963,7 @@ class FEMSolver(object):
             self.norm_residual = np.linalg.norm(Residual)/self.NormForces
 
             if self.debug:
-                print("Calling nonlinear iterative technique " + self.nonlinear_iterative_technique)
+                print("<< Calling nonlinear iterative technique " + self.nonlinear_iterative_technique)
             if self.nonlinear_iterative_technique == "newton_raphson":
                 Eulerx, Eulerp, K, Residual = self.NewtonRaphson(function_spaces, formulation, solver,
                     Increment, K, NodalForces, Residual, mesh, Eulerx, Eulerp,
@@ -1038,22 +1039,22 @@ class FEMSolver(object):
             K_b, F_b = boundary_condition.GetReducedMatrices(K,Residual)[:2]
 
             if self.write_equation_system:
-                print("Writing K [u] = F from reduced (B.C. are incorporated) equation system.")
+                print("<< 10. Print << Writing K [u] = F from reduced (B.C. are incorporated) equation system.")
                 np.savetxt(f'{self.write_file_name} It{Iter} Force.csv', (-F_b).flatten(),
                         fmt='%.10e', delimiter=',',
-                        header=f'RHS (-F_b) that would be solved in Iter {Iter+1}')
+                        header=f'RHS (-F_b) that will be solved in Iter {Iter}')
                     
                 if sp.sparse.issparse(K_b):
                     np.savetxt(f'{self.write_file_name} It{Iter} K.csv', K_b.toarray(),
                             fmt='%.10e', delimiter=',',
                             header=f'Reduced K that would be used in Iter {Iter}')
                 else:
-                    np.savetxt(f'{self.write_file_name} It{Iter+1} K.csv', K_b,
+                    np.savetxt(f'{self.write_file_name} It{Iter} K.csv', K_b,
                             fmt='%.10e', delimiter=',',
-                            header=f'Reduced K that would be used in Iter {Iter}')
+                            header=f'Reduced K that will be used in Iter {Iter}')
 
-            if self.debug:
-                print("Linear Solver {} called from Newton Raphson".format(solver.WhichLinearSolver))
+            #if self.debug:
+                # print("Linear Solver {} called from Newton Raphson".format(solver.WhichLinearSolver))
             # SOLVE THE SYSTEM
             sol = solver.Solve(K_b,-F_b)
 
@@ -1062,6 +1063,7 @@ class FEMSolver(object):
             # self.sol += dU
 
             if self.debug:
+                print("<< 11. Print << Writing displacement sol and dU csv.")
                 np.savetxt(f'{self.write_file_name} It{Iter} sol.csv', sol, fmt='%.10e', delimiter=',',
                                 header=f'Solution after Iter {Iter}')
                 np.savetxt(f'{self.write_file_name} It{Iter} dU.csv', dU, fmt='%.10e', delimiter=',', # custom function: boundary_condition.GetReducedDisplacement(dU)
@@ -1079,6 +1081,7 @@ class FEMSolver(object):
             # self.xx.append(alpha * dU[:,:formulation.ndim])
 
             # RE-ASSEMBLE - COMPUTE STIFFNESS AND INTERNAL TRACTION FORCES
+            print(f"<< Re-Assemble stiffness for next iteration {Iter+1}")
             self.Iter = Iter
             K, TractionForces = Assemble(self, function_spaces[0], formulation, mesh, material,
                 Eulerx,Eulerp)[:2]
@@ -1103,11 +1106,11 @@ class FEMSolver(object):
                 " Residual (abs) {0:>16.7g}".format(self.abs_norm_residual),
                 "\t Residual (rel) {0:>16.7g}".format(self.norm_residual))
 
-            if self.debug:
+            #if self.debug:
                 #print(f"\n=== DEBUG: Increment {Increment}, Iter {Iter} ===")
-                print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
-                print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
-                print(f"  norm(dU): {la.norm(dU):.6e}")
+                # print(f"  Eulerx range: [{Eulerx.min():.6e}, {Eulerx.max():.6e}]")
+                # print(f"  norm(TractionForces): {la.norm(TractionForces):.6e}")
+                # print(f"  norm(dU): {la.norm(dU):.6e}")
 
             # BREAK BASED ON RELATIVE NORM
             if np.abs(self.norm_residual) < Tolerance:
@@ -1129,9 +1132,10 @@ class FEMSolver(object):
                 if self.break_newton_raphson_after_iteration == Iter:
                     # Gleichungssystem der NÄCHSTEN Iteration exportieren (vor dem Solve)
                     if self.debug:
-                        np.savetxt(f'{self.write_file_name} It{Iter} Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
-                                header=f'Eulerx after Iter {Iter} update, before Iter {Iter+1} solve')
-                        np.savetxt(f'{self.write_file_name} It{Iter} TractionForces.csv', TractionForces.flatten(),
+                        print("<< X. Print << Writing equation system with interrupt.")
+                        np.savetxt(f'{self.write_file_name} It{Iter+1} Eulerx.csv', Eulerx, fmt='%.10e', delimiter=',',
+                                header=f'Eulerx after Iter {Iter+1} update, before Iter {Iter+1} solve')
+                        np.savetxt(f'{self.write_file_name} It{Iter+1} TractionForces.csv', TractionForces.flatten(),
                                 fmt='%.10e', delimiter=',',
                                 header=f'f_int (TractionForces) assembled at Iter {Iter+1}')
 

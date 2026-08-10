@@ -2550,6 +2550,7 @@ class MooneyRivlinF(Material):
             if self.debug:
                 if elem == 0:
                     self._stiff_file = open(f'{self.debug_file_name} element hessians.txt', 'w')
+                    print("<< 1. Print << Writing element hessians. Optionally with input and intermediate values.")
 
                 self._stiff_file.write(f"Element {elem} Hessian Matrix: shape {hessian.shape}\n")
 
@@ -2586,7 +2587,7 @@ class MooneyRivlinF(Material):
 
                     if elem == 0:
                         self._stiff_hess_coeff_file = open(f'{self.debug_file_name} element hessian coefficients.txt', 'w')
-                        self._stiff_hess_coeff_file.write(f"# Order of values: mu1, mu2, lambda, sigmaJ, WJJ\n") # W_F, W_H, W_J, W_total
+                        self._stiff_hess_coeff_file.write(f"# Format of values: mu1, mu2, lambda, sigmaJ, WJJ\n") # W_F, W_H, W_J, W_total
                     else:
                         self._stiff_hess_coeff_file = open(f'{self.debug_file_name} element hessian coefficients.txt', 'a')
                     
@@ -2707,6 +2708,7 @@ class MooneyRivlinF(Material):
         if self.debug:
             if elem == 0:
                 fh = open(f'{self.debug_file_name} element PK1stress.txt', 'w')
+                print("<< 2. Print << Writing element stress txt.")
                 fh.write(f"# Element 1.Piola-Kirchhoff stress tensor (P)\n")
                 fh.write(f"# Format: DOF order is [P_xx, P_xy, P_xz, P_xy, ...]\n\n")
             else:
@@ -2722,6 +2724,7 @@ class MooneyRivlinF(Material):
             debug_kinematics_stress = False
 
             if debug_kinematics_stress:
+                print("<< X. Print << Writing kinematics values txt.")
                 if elem == 0:
                     fk = open(f'{self.debug_file_name} element kinematics.txt', 'w')
                     fk.write(f"# Element Kinematic Measures and Invariants\n")
@@ -2841,10 +2844,9 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
         
         # EXPORT THE ELEMENT STIFFNESS 12x12 for linear tetrahedron
         if self.debug:
-            # np.savetxt('stiffness_elem'+str(elem)+'.txt', stiffnessel, delimiter=',', header='stiffness', comments='')
-            
             if elem == 0:
                 self._stiff_file = open(f'{self.debug_file_name} stiffness elements.txt', 'w')
+                print("<< X. Print << Writing stiffness elements txt.")
 
             self._stiff_file.write(f"Element {elem}\n")
             self._stiff_file.write(f"Nodes: {mesh.elements[elem,:]}\n")
@@ -2952,6 +2954,7 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
             if self.debug:
                 if elem == 0:
                     self._shape_file = open(f'{self.debug_file_name} element shape functions.txt', 'w')
+                    print("<< X. Print << Writing element shape functions and derivatives txt.")
                 
                 self._shape_file.write(f"=== Element {elem} shape functions (Bases) ===\n")
                 self._shape_file.write(np.array2string(function_space.Bases, precision=6) + "\n")

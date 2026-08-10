@@ -163,6 +163,7 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
                 if elem == 0:
                     fh_t = open(f'{fem_solver.write_file_name} element forces.txt', 'w')
                     fh_K = open(f'{fem_solver.write_file_name} element stiffness.txt', 'w')
+                    print("<< 5. Print << Writing element force and element stiffness txt.")
                     fh_t.write(f"# Element internal force vectors (t)\n")
                     fh_t.write(f"# nvar={nvar}, nodeperelem={nodeperelem}, ndof={ndof}\n")
                     fh_t.write(f"# Format: DOF order is [node0_x, node0_y, node0_z, node1_x, ...]\n\n")
@@ -294,6 +295,7 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
 
     # Nach der Elementschleife:
     if fem_solver.debug:
+        print("<< 6. Print << Writing global force and global stiffness txt.")
         with open(f'{fem_solver.write_file_name} global force.txt', 'w') as f:
             f.write(f"Global Force Vector: shape {T.shape}\n")
             np.savetxt(f, T.flatten(), fmt='%.10e', delimiter=',')
