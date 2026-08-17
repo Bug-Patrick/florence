@@ -2951,6 +2951,8 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
             # EXPORT THE HESSIAN 9x9
 
             # EXPORT THE SHAPE FUNCTIONS + DERIVATIVES
+            self.debug = True
+            self.debug_file_name = "florence bar MR/florence bar MR"
             if self.debug:
                 if elem == 0:
                     self._shape_file = open(f'{self.debug_file_name} element shape functions.txt', 'w')
@@ -3004,8 +3006,19 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
         SpatialGradient = SpatialGradient.T.copy()
         FillConstitutiveBF(B,SpatialGradient,self.ndim,self.nvar)
-        
+
+        if self.debug:
+            self._shape_file.write(f"=== Element shape functions (B) ===\n")
+            self._shape_file.write(np.array2string(B, precision=6) + "\n")
+
+            self._shape_file.write(f"=== Element Hessian (H) Voigt Notation ===\n")
+            self._shape_file.write(np.array2string(H_Voigt, precision=6) + "\n")
+
         BDB = B.dot(H_Voigt.dot(B.T))
+
+        if self.debug:
+            self._shape_file.write(f"=== Element BDB ===\n")
+            self._shape_file.write(np.array2string(BDB, precision=6) + "\n")
 
         t=np.zeros((B.shape[0],1))
         if requires_geometry_update:

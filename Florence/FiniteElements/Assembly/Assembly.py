@@ -169,7 +169,7 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
                     fh_t.write(f"# Format: DOF order is [node0_x, node0_y, node0_z, node1_x, ...]\n\n")
                     fh_K.write(f"# Element stiffness matrices (K_e)\n")
                     fh_K.write(f"# nvar={nvar}, nodeperelem={nodeperelem}, ndof={ndof}\n")
-                    fh_K.write(f"# Reconstructed from I,J,V triplets into dense {ndof}x{ndof} matrix\n\n")
+                    # fh_K.write(f"# Reconstructed from I,J,V triplets into dense {ndof}x{ndof} matrix\n\n")
                 else:
                     fh_t = open(f'{fem_solver.write_file_name} element forces.txt', 'a')
                     fh_K = open(f'{fem_solver.write_file_name} element stiffness.txt', 'a')
@@ -178,13 +178,14 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
                 elem_nodes = mesh.elements[elem, :]
 
                 # --- Element Kraftvektor ---
-                fh_t.write(f"# Element {elem} | Nodes: {elem_nodes.tolist()}\n")
-                fh_t.write(f"# DOF-Zuordnung: ")
-                for inode, gnode in enumerate(elem_nodes):
-                    for ivar in range(nvar):
-                        dof_label = ['x','y','z'][ivar]
-                        fh_t.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
-                fh_t.write(f"\n")
+                fh_t.write(f"# Element {elem}\n")
+                fh_t.write(f"# Nodes: {elem_nodes.tolist()}\n")
+                #fh_t.write(f"# DOF-Zuordnung: ")
+                #for inode, gnode in enumerate(elem_nodes):
+                #    for ivar in range(nvar):
+                #        dof_label = ['x','y','z'][ivar]
+                #        fh_t.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
+                #fh_t.write(f"\n")
                 np.savetxt(fh_t, t.flatten().reshape(1,-1), fmt='%+.10e', delimiter=', ')
                 fh_t.write(f"\n")
 
@@ -192,13 +193,14 @@ def AssemblySmall(fem_solver, function_space, formulation, mesh, material, Euler
                 K_elem = np.zeros((ndof, ndof), dtype=np.float64)
                 K_elem[I_stiff_elem, J_stiff_elem] = V_stiff_elem
 
-                fh_K.write(f"# Element {elem} | Nodes: {elem_nodes.tolist()}\n")
-                fh_K.write(f"# DOF-Zuordnung: ")
-                for inode, gnode in enumerate(elem_nodes):
-                    for ivar in range(nvar):
-                        dof_label = ['x','y','z'][ivar]
-                        fh_K.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
-                fh_K.write(f"\n")
+                fh_K.write(f"# Element {elem}\n")
+                fh_K.write(f"# Nodes: {elem_nodes.tolist()}\n")
+                #fh_K.write(f"# DOF-Zuordnung: ")
+                #for inode, gnode in enumerate(elem_nodes):
+                #    for ivar in range(nvar):
+                #        dof_label = ['x','y','z'][ivar]
+                #        fh_K.write(f"  [{inode*nvar+ivar}]=N{gnode}_{dof_label}")
+                #fh_K.write(f"\n")
                 np.savetxt(fh_K, K_elem, fmt='%+.10e', delimiter=', ')
                 fh_K.write(f"\n")
 
