@@ -3009,16 +3009,16 @@ class FBasedDisplacementFormulation(VariationalPrinciple):
 
         if self.debug:
             self._shape_file.write(f"=== Element shape functions (B) ===\n")
-            self._shape_file.write(np.array2string(B, precision=6) + "\n")
+            self._shape_file.write(np.array2string(B, precision=6, max_line_width=150) + "\n")
 
             self._shape_file.write(f"=== Element Hessian (H) Voigt Notation ===\n")
-            self._shape_file.write(np.array2string(H_Voigt, precision=6) + "\n")
+            self._shape_file.write(np.array2string(H_Voigt, precision=6, max_line_width=150) + "\n")
 
         BDB = B.dot(H_Voigt.dot(B.T))
 
         if self.debug:
             self._shape_file.write(f"=== Element BDB ===\n")
-            self._shape_file.write(np.array2string(BDB, precision=6) + "\n")
+            self._shape_file.write(np.array2string(BDB, precision=6, max_line_width=200) + "\n")
 
         t=np.zeros((B.shape[0],1))
         if requires_geometry_update:
